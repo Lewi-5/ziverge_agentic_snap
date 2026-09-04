@@ -53,10 +53,14 @@ export function createNodeHttpServerAdapter(): HttpServerPort {
           }
           const actualPort = address.port;
 
+          let closingPromise: Promise<void> | undefined;
           const handle: HttpServerHandle = {
             port: actualPort,
             async close(): Promise<void> {
-              return new Promise<void>((resolveClose) => {
+              if (closingPromise !== undefined) {
+                return closingPromise;
+              }
+              closingPromise = new Promise<void>((resolveClose) => {
                 if ("closeAllConnections" in server && typeof server.closeAllConnections === "function") {
                   server.closeAllConnections();
                 }
@@ -64,6 +68,7 @@ export function createNodeHttpServerAdapter(): HttpServerPort {
                   resolveClose();
                 });
               });
+              return closingPromise;
             },
           };
 

@@ -11,6 +11,10 @@ export function createNodeHttpClientAdapter(): HttpClientPort {
     async get(url: string): Promise<HttpResponse> {
       return new Promise<HttpResponse>((resolve, reject) => {
         const parsedUrl = new URL(url);
+        if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+          reject(new Error(`unsupported protocol: ${parsedUrl.protocol}`));
+          return;
+        }
         const transport = parsedUrl.protocol === "https:" ? https : http;
 
         // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- IncomingMessage is a mutable Node library stream.

@@ -11,6 +11,7 @@ import { createNodeEnvironmentAdapter } from "../src/adapters/node-environment-a
 import { createNodeWorkingTreeAdapter } from "../src/adapters/node-working-tree-adapter.js";
 import type { SignalPort } from "../src/ports/signal-port.js";
 import type { OutputPort } from "../src/ports/output-port.js";
+import type { HttpServerPort } from "../src/ports/http-server-port.js";
 
 interface FakeSignal {
   readonly port: SignalPort;
@@ -110,5 +111,53 @@ test("serve reports an invalid startup repository without binding a socket or wr
   assert.equal(outcome.exitCode, 1);
   assert.equal(outcome.stdout, "");
   assert.match(outcome.stderr, /^snap: .+\n$/);
+  assert.equal(output.writes.length, 0);
+});
+
+test("serve reports a socket listen failure as an expected error with exit code 1", async () => {
+  const cwd = await setupRepo();
+  const fileSystem = createNodeFileSystemAdapter();
+  const repositoryDiscovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
+  const failingHttpServer: HttpServerPort = {
+    async listen(): Promise<never> {
+      throw new Error("listen EADDRINUSE: address already in use 127.0.0.1:8765");
+    },
+  };
+  const signal = createFakeSignal();
+  const output = createRecordingOutput();
+  const environment = createNodeEnvironmentAdapter({});
+  const workingTree = createNodeWorkingTreeAdapter(fileSystem);
+
+  const outcome = await runCli({
+    argv: ["--serve", "8765"],
+    cwd,
+    ports: { fileSystem, repositoryDiscovery, environment, workingTree, httpServer: failingHttpServer, signal: signal.port, output: output.port },
+  });
+
+  assert.equal(outcome.exitCode, 1);
+  assert.equal(outcome.stdout, "");
+  assert.match(outcome.stderr, /^snap: server listen failed: listen EADDRINUSE: address already in use 127\.0\.0\.1:8765\n$/);
+  assert.equal(output.writes.length, 0);
+});
+
+test("serve reports an invalid port containing control characters as a single escaped line", async () => {
+  const cwd = await setupRepo();
+  const fileSystem = createNodeFileSystemAdapter();
+  const repositoryDiscovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
+  const httpServer = createNodeHttpServerAdapter();
+  const signal = createFakeSignal();
+  const output = createRecordingOutput();
+  const environment = createNodeEnvironmentAdapter({});
+  const workingTree = createNodeWorkingTreeAdapter(fileSystem);
+
+  const outcome = await runCli({
+    argv: ["--serve", "8765\n"],
+    cwd,
+    ports: { fileSystem, repositoryDiscovery, environment, workingTree, httpServer, signal: signal.port, output: output.port },
+  });
+
+  assert.equal(outcome.exitCode, 1);
+  assert.equal(outcome.stdout, "");
+  assert.equal(outcome.stderr, "snap: invalid port: 8765\\x0a\n");
   assert.equal(output.writes.length, 0);
 });

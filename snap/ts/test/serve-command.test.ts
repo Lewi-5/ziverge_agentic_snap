@@ -134,3 +134,48 @@ test("serve closes cleanly and unregisters its listener exactly once on a shutdo
   signal.trigger();
   assert.equal(signal.unregisterCalls, 1);
 });
+
+test("serve returns an io DomainError when httpServer.listen fails (e.g. EADDRINUSE)", async () => {
+  const { repoDir, ports } = await setupRepo(VALID_REPO);
+  const signal = createFakeSignal();
+
+  const failingHttpServer: HttpServerPort = {
+    async listen(): Promise<HttpServerHandle> {
+      throw new Error("listen EADDRINUSE: address already in use 127.0.0.1:8765");
+    },
+  };
+
+  const result = await serve(repoDir, 8765, { ...ports, httpServer: failingHttpServer, signal: signal.port });
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.error.category, "io");
+    assert.match(result.error.detail, /^server listen failed: listen EADDRINUSE/);
+  }
+  // No signal listener registered if listen failed
+  assert.equal(signal.registeredSignals, undefined);
+});
+
+test("serve unregisters signal listener and resolves closed even if handle.close() rejects", async () => {
+  const { repoDir, ports } = await setupRepo(VALID_REPO);
+  const signal = createFakeSignal();
+
+  const rejectingCloseServer: HttpServerPort = {
+    async listen(): Promise<HttpServerHandle> {
+      return {
+        port: 8765,
+        async close(): Promise<void> {
+          throw new Error("simulated socket close failure");
+        },
+      };
+    },
+  };
+
+  const result = await serve(repoDir, 8765, { ...ports, httpServer: rejectingCloseServer, signal: signal.port });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  signal.trigger();
+  // Must resolve closed and unregister without hanging or throwing unhandled rejection
+  await result.value.closed;
+  assert.equal(signal.unregisterCalls, 1);
+});

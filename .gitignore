@@ -145,3 +145,7 @@ vite.config.ts.timestamp-*
 # Intermediate test/harness builds
 .*-build/
 
+# Local test sandbox
+local_test/
+snap/local_test/
+

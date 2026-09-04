@@ -1,8 +1,8 @@
-import type { DomainError } from "../../domain/errors.js";
-import { ok, type Result } from "../../domain/result.js";
+import { domainError, escapeControlCharacters, type DomainError } from "../../domain/errors.js";
+import { err, ok, type Result } from "../../domain/result.js";
 import { serializeRepositoryDocument } from "../../domain/repository/serialize.js";
 import type { FileSystemPort } from "../../ports/filesystem-port.js";
-import type { HttpServerPort } from "../../ports/http-server-port.js";
+import type { HttpServerHandle, HttpServerPort } from "../../ports/http-server-port.js";
 import type { RepositoryDiscoveryPort } from "../../ports/repository-discovery-port.js";
 import type { SignalPort } from "../../ports/signal-port.js";
 import { loadLocalRepository } from "../repository/load-local-repository.js";
@@ -34,7 +34,13 @@ export async function serve(cwd: string, port: number, ports: ServePorts): Promi
   const jsonText = serializeRepositoryDocument(loaded.value.repository.document);
   const snapshotBytes = new TextEncoder().encode(jsonText);
 
-  const handle = await ports.httpServer.listen({ host: "127.0.0.1", port, snapshotBytes });
+  let handle: HttpServerHandle;
+  try {
+    handle = await ports.httpServer.listen({ host: "127.0.0.1", port, snapshotBytes });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return err(domainError("io", `server listen failed: ${escapeControlCharacters(detail)}`));
+  }
   const url = `http://127.0.0.1:${String(handle.port)}/repository.json`;
 
   const closed = new Promise<void>((resolve) => {
@@ -42,10 +48,13 @@ export async function serve(cwd: string, port: number, ports: ServePorts): Promi
     const unregister = ports.signal.onSignal(["SIGINT", "SIGTERM"], () => {
       if (closing) return;
       closing = true;
-      void handle.close().then(() => {
-        unregister();
-        resolve();
-      });
+      void handle
+        .close()
+        .catch(() => undefined)
+        .finally(() => {
+          unregister();
+          resolve();
+        });
     });
   });
 

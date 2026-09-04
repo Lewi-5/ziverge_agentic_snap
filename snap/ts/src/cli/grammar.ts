@@ -1,4 +1,4 @@
-import { domainError, type DomainError } from "../domain/errors.js";
+import { domainError, escapeControlCharacters, type DomainError } from "../domain/errors.js";
 import { type Result, ok, err } from "../domain/result.js";
 import type { CommandRequest } from "./command-request.js";
 
@@ -20,7 +20,7 @@ export const DIFF_USAGE_ERROR: DomainError = domainError(
  * Creates an invalid port error diagnostic (SPEC §7.10, Scenario 14).
  */
 export function invalidPortError(operand: string): DomainError {
-  return domainError("validation", `invalid port: ${operand}`);
+  return domainError("validation", `invalid port: ${escapeControlCharacters(operand)}`);
 }
 
 /**

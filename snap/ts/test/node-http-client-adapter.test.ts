@@ -48,3 +48,15 @@ test("NodeHttpClientAdapter does not follow redirects (SPEC §9)", async () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+test("NodeHttpClientAdapter rejects requests with unsupported protocol", async () => {
+  const client = createNodeHttpClientAdapter();
+  await assert.rejects(
+    async () => {
+      await client.get("ftp://127.0.0.1/repository.json");
+    },
+    {
+      message: "unsupported protocol: ftp:",
+    },
+  );
+});

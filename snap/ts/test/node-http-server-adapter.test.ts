@@ -130,3 +130,20 @@ test("NodeHttpServerAdapter rejects unsupported methods with 405 and Allow heade
     await handle.close();
   }
 });
+
+test("NodeHttpServerAdapter handle.close is idempotent across concurrent and sequential calls", async () => {
+  const adapter = createNodeHttpServerAdapter();
+  const snapshot = Buffer.from('{"format":1}\n', "utf-8");
+
+  const handle = await adapter.listen({
+    host: "127.0.0.1",
+    port: 0,
+    snapshotBytes: new Uint8Array(snapshot),
+  });
+
+  // Concurrent calls to close() should return the same promise and not throw
+  await Promise.all([handle.close(), handle.close()]);
+
+  // Subsequent call after closure should also resolve cleanly
+  await handle.close();
+});

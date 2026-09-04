@@ -25,8 +25,6 @@ export function interpolate(value: string, variables: ReadonlyMap<string, string
       if (replacement === undefined) throw new Error(`unknown variable: ${name}`);
       result += replacement;
       index = end + 2;
-    } else if (value.startsWith("}}", index)) {
-      throw invalidExpression(value);
     } else {
       result += value[index];
       index++;

@@ -63,6 +63,7 @@ test("interpolation is single-pass and supports literal delimiters", () => {
   const variables = new Map([["value", "{{other}}"], ["other", "expanded"]]);
   assert.equal(interpolate("{{value}}", variables), "{{other}}");
   assert.equal(interpolate("{{{{other}}}}", variables), "{{other}}");
+  assert.equal(interpolate('{"key":"value"}}', variables), '{"key":"value"}}');
   assert.throws(() => interpolate("{{missing}}", variables), /unknown variable/);
 });
 

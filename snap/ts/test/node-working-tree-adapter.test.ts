@@ -5,6 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { createNodeFileSystemAdapter } from "../src/adapters/node-filesystem-adapter.js";
 import { createNodeWorkingTreeAdapter } from "../src/adapters/node-working-tree-adapter.js";
+import type { FileSystemPort } from "../src/ports/filesystem-port.js";
 
 async function withTempRepo(build: (root: string) => Promise<void>): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "snap-scan-"));
@@ -146,5 +147,39 @@ test("real filesystem: an entry at the scan root and a nested entry both use / -
     }
   } finally {
     await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("mock filesystem: sorts directory entries deterministically so the first unsupported entry by byte order is reported", async () => {
+  const mockFs: FileSystemPort = {
+    async entryKind(p: string) {
+      if (p.endsWith("z_symlink") || p.endsWith("a_symlink")) return "symlink";
+      return "missing";
+    },
+    async pathExists() {
+      return false;
+    },
+    async isDirectory() {
+      return false;
+    },
+    async mkdirRecursive() {},
+    async writeFile() {},
+    async readFileIfExists() {
+      return null;
+    },
+    async writeFileDurable() {},
+    async renameFile() {},
+    async removeFileIfExists() {},
+    async listDirectory() {
+      // Returns entries in reverse order
+      return ["z_symlink", "a_symlink"];
+    },
+  };
+
+  const scanner = createNodeWorkingTreeAdapter(mockFs);
+  const result = await scanner.scan("/mock/repo");
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.error.detail, "unsupported working tree entry: a_symlink");
   }
 });

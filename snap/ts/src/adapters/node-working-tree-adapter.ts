@@ -2,6 +2,7 @@ import * as path from "node:path";
 import { domainError, type DomainError } from "../domain/errors.js";
 import { err } from "../domain/result.js";
 import { constructFileTree } from "../domain/tree/construct.js";
+import { sortByUnsignedUtf8 } from "../domain/unsigned-utf8.js";
 import type { FileSystemPort } from "../ports/filesystem-port.js";
 import type { WorkingTreePort } from "../ports/working-tree-port.js";
 
@@ -22,7 +23,8 @@ export function createNodeWorkingTreeAdapter(fileSystem: FileSystemPort): Workin
     entries: [string, Uint8Array][],
   ): Promise<DomainError | null> {
     const names = await fileSystem.listDirectory(absoluteDir);
-    for (const name of names) {
+    const sortedNames = sortByUnsignedUtf8(names, (name) => name);
+    for (const name of sortedNames) {
       if (isRoot && name === ".snap") {
         continue;
       }

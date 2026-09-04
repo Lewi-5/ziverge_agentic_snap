@@ -1,4 +1,5 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, execFileSync, spawnSync, type ChildProcess } from "node:child_process";
+import { readFileSync } from "node:fs";
 import type { Environment, ProcessResult, StartStep } from "./types.js";
 
 const STREAM_LIMIT = 16 * 1024 * 1024;
@@ -133,10 +134,12 @@ export function cleanupProcess(managed: ManagedProcess): void {
 }
 
 function launch(options: ProcessOptions): ManagedProcess {
-  const child = spawn(options.candidate, options.args, {
+  const target = resolveLaunchTarget(options.candidate, options.args);
+  const child = spawn(target.command, target.args, {
     cwd: options.cwd,
     env: options.env,
-    detached: true,
+    detached: process.platform !== "win32",
+    windowsHide: true,
     stdio: ["pipe", "pipe", "pipe"],
   });
   const output = new OutputCollector(child);
@@ -200,5 +203,82 @@ function decode(buffer: Buffer): string {
 
 function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
   if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return;
+  if (process.platform === "win32") {
+    try {
+      spawnSync("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" });
+    } catch {
+      try { child.kill(); } catch { /* exited */ }
+    }
+    return;
+  }
   try { process.kill(-child.pid, signal); } catch { try { child.kill(signal); } catch { /* exited */ } }
+}
+
+// ---------------------------------------------------------------------------
+// Windows launch resolution
+//
+// Candidates (including the shebang wrapper scripts snap/run_tests generates
+// via mktemp) are POSIX shell scripts. On POSIX, the kernel resolves a
+// `#!` line automatically; on Windows, Win32 CreateProcess cannot interpret
+// a shebang or an extensionless file at all, so a direct `spawn(candidate)`
+// fails immediately with UV_EFTYPE before the target program ever runs. When
+// running on Windows, detect a leading `#!` and re-target the spawn at the
+// resolved interpreter (e.g. an installed Git-for-Windows `sh.exe`) with the
+// candidate path prepended to its arguments, exactly as a POSIX loader would.
+// Non-shebang candidates (a real .exe) are spawned unchanged on every
+// platform.
+// ---------------------------------------------------------------------------
+
+interface LaunchTarget {
+  readonly command: string;
+  readonly args: string[];
+}
+
+const resolvedInterpreters = new Map<string, string>();
+
+function resolveInterpreterPath(name: string): string {
+  const cached = resolvedInterpreters.get(name);
+  if (cached !== undefined) return cached;
+  let resolved: string | undefined;
+  try {
+    resolved = execFileSync("where", [name], { encoding: "utf8" })
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line.length > 0);
+  } catch {
+    resolved = undefined;
+  }
+  if (resolved === undefined) {
+    throw new Error(
+      `snap test-harness: could not locate '${name}' on PATH to launch a shebang-based ` +
+        "candidate on Windows (install Git for Windows or WSL so a POSIX shell is available)",
+    );
+  }
+  resolvedInterpreters.set(name, resolved);
+  return resolved;
+}
+
+function resolveLaunchTarget(candidate: string, args: string[]): LaunchTarget {
+  if (process.platform !== "win32") return { command: candidate, args };
+
+  let header: Buffer;
+  try {
+    header = readFileSync(candidate);
+  } catch {
+    return { command: candidate, args };
+  }
+  if (header[0] !== 0x23 /* # */ || header[1] !== 0x21 /* ! */) {
+    return { command: candidate, args };
+  }
+
+  const newline = header.indexOf(0x0a);
+  const shebangLine = header.subarray(2, newline === -1 ? undefined : newline).toString("utf8").trim();
+  const parts = shebangLine.split(/\s+/).filter((part) => part.length > 0);
+  const first = parts[0] ?? "sh";
+  const firstName = first.split(/[\\/]/).pop() ?? first;
+  const isEnv = firstName === "env";
+  const interpreterName = isEnv ? (parts[1] ?? "sh") : firstName;
+  const interpreterArgs = isEnv ? parts.slice(2) : parts.slice(1);
+  const interpreterPath = resolveInterpreterPath(interpreterName);
+  return { command: interpreterPath, args: [...interpreterArgs, candidate, ...args] };
 }

@@ -7,6 +7,7 @@ import { runCli } from "../src/cli/dispatch.js";
 import { createNodeEnvironmentAdapter } from "../src/adapters/node-environment-adapter.js";
 import { createNodeFileSystemAdapter } from "../src/adapters/node-filesystem-adapter.js";
 import { createNodeRepositoryDiscoveryAdapter } from "../src/adapters/node-repository-discovery-adapter.js";
+import { createNodeWorkingTreeAdapter } from "../src/adapters/node-working-tree-adapter.js";
 import type { CliPorts } from "../src/cli/types.js";
 import type { EnvironmentPort } from "../src/ports/environment-port.js";
 import type { FileSystemPort } from "../src/ports/filesystem-port.js";
@@ -34,6 +35,7 @@ function throwingPorts(): CliPorts {
     },
     repositoryDiscovery: { findRepositoryRoot: fail },
     environment: { getEnv: fail },
+    workingTree: { scan: fail },
   };
 }
 
@@ -98,7 +100,7 @@ test("grammar: an invalid contributor id reaches setConfig and fails with the ex
   const outcome = await runCli({
     argv: ["config", "contributor.id", "bad-id"],
     cwd: CWD,
-    ports: { fileSystem, repositoryDiscovery, environment },
+    ports: { fileSystem, repositoryDiscovery, environment, workingTree: { scan: () => Promise.reject(new Error("not used in this test")) } },
   });
   assert.equal(outcome.exitCode, 1);
   assert.equal(outcome.stdout, "");
@@ -119,7 +121,7 @@ test("real filesystem: local write through the same Node adapters main.ts uses",
     const outcome = await runCli({
       argv: ["config", "contributor.id", "alice@example.com"],
       cwd: repoRoot,
-      ports: { fileSystem, repositoryDiscovery, environment },
+      ports: { fileSystem, repositoryDiscovery, environment, workingTree: createNodeWorkingTreeAdapter(fileSystem) },
     });
     assert.equal(outcome.exitCode, 0);
     assert.equal(outcome.stdout, "");
@@ -144,7 +146,7 @@ test("real filesystem: global write requires no repository and needs HOME", asyn
     const outcome = await runCli({
       argv: ["config", "--global", "contributor.id", "alice@example.com"],
       cwd: root,
-      ports: { fileSystem, repositoryDiscovery, environment },
+      ports: { fileSystem, repositoryDiscovery, environment, workingTree: createNodeWorkingTreeAdapter(fileSystem) },
     });
     assert.equal(outcome.exitCode, 0);
     assert.equal(outcome.stdout, "");
@@ -167,7 +169,7 @@ test("real filesystem: local write outside any repository fails with 'not a Snap
     const outcome = await runCli({
       argv: ["config", "contributor.id", "alice@example.com"],
       cwd: root,
-      ports: { fileSystem, repositoryDiscovery, environment },
+      ports: { fileSystem, repositoryDiscovery, environment, workingTree: createNodeWorkingTreeAdapter(fileSystem) },
     });
     assert.equal(outcome.exitCode, 1);
     assert.equal(outcome.stdout, "");

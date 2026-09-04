@@ -1,5 +1,6 @@
 import { domainError, type DomainError } from "../errors.js";
 import { err, ok, type Result } from "../result.js";
+import { compareUnsignedUtf8 } from "../unsigned-utf8.js";
 import { createVersion } from "../version/construct.js";
 import type { ContributorId } from "../version/contributor-id.js";
 import { MAX_REVISION, type Version } from "../version/types.js";
@@ -11,7 +12,8 @@ import type { Change, Patch } from "./types.js";
  * both `linear-history.ts` (replaying an existing chain) and `commit`
  * (computing the version to print after publishing a new patch).
  */
-export function computePatchResult(base: Version, author: ContributorId, revision: number): Result<Version, DomainError> {
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- `Version`'s components are already readonly/frozen; the rule does not recognize the branded interface as deeply readonly.
+export function computePatchResult(base: Version, author: ContributorId | string, revision: number): Result<Version, DomainError> {
   const components = base.components.filter((component) => component.contributorId !== author).concat({ contributorId: author, revision });
   return createVersion(components);
 }
@@ -46,4 +48,15 @@ export function constructPatch(input: {
       changes: input.changes,
     }),
   );
+}
+
+/** SPEC §4.1: `patches` is stored sorted by author, then numeric revision. */
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- Patch is an immutable, already-readonly domain value; the rule does not recognize the branded ContributorId author field as deeply readonly.
+export function sortPatches(patches: readonly Patch[]): readonly Patch[] {
+  // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- Patch is an immutable, already-readonly domain value; the rule does not recognize the branded ContributorId author field as deeply readonly.
+  return [...patches].sort((left, right) => {
+    const order = compareUnsignedUtf8(left.author, right.author);
+    if (order !== 0) return order;
+    return left.revision === right.revision ? 0 : left.revision < right.revision ? -1 : 1;
+  });
 }

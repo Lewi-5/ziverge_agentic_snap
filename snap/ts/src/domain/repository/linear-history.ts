@@ -5,7 +5,7 @@ import { applyEdit } from "../edit/apply.js";
 import { constructEdit } from "../edit/construct.js";
 import { domainError, type DomainError } from "../errors.js";
 import { err, ok, type Result } from "../result.js";
-import { bytesEqual } from "../tree/change.js";
+import { bytesEqual, type FileTree } from "../tree/change.js";
 import { constructFileTree } from "../tree/construct.js";
 import { compareUnsignedUtf8 } from "../unsigned-utf8.js";
 import { formatVersion } from "../version/format.js";
@@ -145,6 +145,13 @@ export function validateLinearRepository(raw: RawRepositoryDocument): Result<Lin
 
   const tree = new Map<string, Uint8Array>();
   const validatedPatches: Patch[] = [];
+  const emptyTreeSnapshot = constructFileTree([]);
+  if (!emptyTreeSnapshot.ok) {
+    return emptyTreeSnapshot;
+  }
+  const versions = new Map<string, FileTree>();
+  versions.set(formatVersion(EMPTY_VERSION), emptyTreeSnapshot.value);
+  let runningVersion: Version = EMPTY_VERSION;
   for (const patch of chain) {
     const changes: Change[] = [];
     for (const rawChange of patch.changes) {
@@ -167,6 +174,12 @@ export function validateLinearRepository(raw: RawRepositoryDocument): Result<Lin
         changes: Object.freeze(changes),
       }),
     );
+    const advanced = computePatchResult(runningVersion, patch.author, patch.revision);
+    if (!advanced.ok) {
+      return advanced;
+    }
+    runningVersion = advanced.value;
+    versions.set(formatVersion(runningVersion), treeCheck.value);
   }
 
   const document: RepositoryDocument = Object.freeze({
@@ -174,5 +187,5 @@ export function validateLinearRepository(raw: RawRepositoryDocument): Result<Lin
     frontier: raw.frontier,
     patches: Object.freeze(validatedPatches),
   });
-  return ok(makeLinearRepository(document));
+  return ok(makeLinearRepository(document, versions));
 }

@@ -54,11 +54,12 @@ function isPlainObject(value: unknown): value is Readonly<Record<string, unknown
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function requireExactKeys(value: Readonly<Record<string, unknown>>, keys: readonly string[]): Result<void, DomainError> {
+function requireExactKeys(value: Readonly<Record<string, unknown>>, keys: readonly string[], context: string): Result<void, DomainError> {
   const actual = Object.keys(value);
-  if (actual.length !== keys.length || !keys.every((key) => Object.hasOwn(value, key))) {
-    return err(domainError("validation", `expected exactly the fields [${keys.join(", ")}]`));
-  }
+  const unknown = actual.find((key) => !keys.includes(key));
+  if (unknown !== undefined) return err(domainError("validation", `${context} has unknown field: ${unknown}`));
+  const missing = keys.find((key) => !Object.hasOwn(value, key));
+  if (missing !== undefined) return err(domainError("validation", `${context} is missing field: ${missing}`));
   return ok(undefined);
 }
 
@@ -106,42 +107,41 @@ function decodeChange(value: unknown): Result<RawChange, DomainError> {
   }
   const type: unknown = value["type"];
   if (type === "text") {
-    const keys = requireExactKeys(value, ["type", "path", "edit"]);
+    const keys = requireExactKeys(value, ["type", "path", "edit"], "text change");
     if (!keys.ok) return keys;
     const pathRaw = value["path"];
     if (typeof pathRaw !== "string") return err(domainError("validation", "change path must be a string"));
     const path = createTrackedPath(pathRaw);
-    if (!path.ok) return path;
+    if (!path.ok) return err(domainError("validation", `path is invalid: ${path.error.detail}`));
     if (!("edit" in value)) return err(domainError("validation", "text change is missing 'edit'"));
     return ok({ type: "text", path: path.value, editJson: value["edit"] });
   }
   if (type === "put") {
-    const keys = requireExactKeys(value, ["type", "path", "content"]);
+    const keys = requireExactKeys(value, ["type", "path", "content"], "put change");
     if (!keys.ok) return keys;
     const pathRaw = value["path"];
     if (typeof pathRaw !== "string") return err(domainError("validation", "change path must be a string"));
     const path = createTrackedPath(pathRaw);
-    if (!path.ok) return path;
+    if (!path.ok) return err(domainError("validation", `path is invalid: ${path.error.detail}`));
     const content = decodeBase64(value["content"]);
     if (!content.ok) return content;
     return ok({ type: "put", path: path.value, content: content.value });
   }
   if (type === "delete") {
-    const keys = requireExactKeys(value, ["type", "path"]);
+    const keys = requireExactKeys(value, ["type", "path"], "delete change");
     if (!keys.ok) return keys;
     const pathRaw = value["path"];
     if (typeof pathRaw !== "string") return err(domainError("validation", "change path must be a string"));
     const path = createTrackedPath(pathRaw);
-    if (!path.ok) return path;
+    if (!path.ok) return err(domainError("validation", `path is invalid: ${path.error.detail}`));
     return ok({ type: "delete", path: path.value });
   }
   return err(domainError("validation", "change type must be 'text', 'put', or 'delete'"));
 }
 
 function decodeChanges(value: unknown): Result<readonly RawChange[], DomainError> {
-  if (!Array.isArray(value) || value.length === 0) {
-    return err(domainError("validation", "patch changes must be a nonempty array"));
-  }
+  if (!Array.isArray(value)) return err(domainError("validation", "patch changes must be an array"));
+  if (value.length === 0) return err(domainError("validation", "patch changes is empty"));
   const changes: RawChange[] = [];
   let previousPath: string | undefined;
   for (const rawChange of value) {
@@ -162,7 +162,7 @@ function decodePatch(value: unknown): Result<RawPatch, DomainError> {
   if (!isPlainObject(value)) {
     return err(domainError("validation", "patch must be an object"));
   }
-  const keys = requireExactKeys(value, ["author", "revision", "base", "message", "changes"]);
+  const keys = requireExactKeys(value, ["author", "revision", "base", "message", "changes"], "patch");
   if (!keys.ok) return keys;
 
   const authorRaw = value["author"];
@@ -206,7 +206,7 @@ export function decodeRepositoryDocument(value: unknown): Result<RawRepositoryDo
   if (!isPlainObject(value)) {
     return err(domainError("validation", "repository document must be an object"));
   }
-  const keys = requireExactKeys(value, ["format", "frontier", "patches"]);
+  const keys = requireExactKeys(value, ["format", "frontier", "patches"], "repository");
   if (!keys.ok) return keys;
 
   if (value["format"] !== 1) {

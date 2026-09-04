@@ -25,6 +25,7 @@ function randomTempSuffix(): string {
  */
 export async function publishRepository(
   repoRoot: string,
+  // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- RepositoryDocument is an immutable, already-readonly domain value; the rule does not recognize the branded ContributorId author field as deeply readonly.
   document: RepositoryDocument,
   ports: PublishRepositoryPorts,
 ): Promise<void> {

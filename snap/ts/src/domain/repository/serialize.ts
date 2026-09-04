@@ -23,6 +23,7 @@ function serializeChange(change: Change): Readonly<Record<string, unknown>> {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- Patch is an immutable, already-readonly domain value; the rule does not recognize the branded ContributorId author field as deeply readonly.
 function serializePatch(patch: Patch): Readonly<Record<string, unknown>> {
   return {
     author: patch.author,
@@ -34,6 +35,7 @@ function serializePatch(patch: Patch): Readonly<Record<string, unknown>> {
 }
 
 /** Canonical `repository.json` encoding (SPEC §4.1): two-space indent, one trailing LF. */
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- RepositoryDocument is an immutable, already-readonly domain value; the rule does not recognize the branded ContributorId author field as deeply readonly.
 export function serializeRepositoryDocument(document: RepositoryDocument): string {
   const plain = {
     format: document.format,

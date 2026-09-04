@@ -1,5 +1,9 @@
+import { commitCommand } from "./commands/commit.js";
 import { configCommand } from "./commands/config.js";
+import { diffCommand } from "./commands/diff.js";
 import { initCommand } from "./commands/init.js";
+import { logCommand } from "./commands/log.js";
+import { statusCommand } from "./commands/status.js";
 import { versionCommand } from "./commands/version.js";
 import type { Command } from "./commands/command.js";
 import { formatCliErrorLine, unexpectedErrorDetail } from "./errors.js";
@@ -11,6 +15,10 @@ import type { CliContext, CliOutcome } from "./types.js";
 const COMMANDS: ReadonlyMap<string, Command> = new Map([
   ["init", initCommand],
   ["config", configCommand],
+  ["status", statusCommand],
+  ["commit", commitCommand],
+  ["log", logCommand],
+  ["diff", diffCommand],
 ]);
 
 export async function runCli(context: CliContext): Promise<CliOutcome> {

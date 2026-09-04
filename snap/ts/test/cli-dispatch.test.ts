@@ -7,6 +7,7 @@ import type { CliPorts } from "../src/cli/types.js";
 import type { EnvironmentPort } from "../src/ports/environment-port.js";
 import type { FileSystemPort } from "../src/ports/filesystem-port.js";
 import type { RepositoryDiscoveryPort } from "../src/ports/repository-discovery-port.js";
+import type { WorkingTreePort } from "../src/ports/working-tree-port.js";
 
 const GRAMMAR_ERROR_LINE = "snap: invalid command or arguments\n";
 
@@ -44,6 +45,14 @@ function throwingEnvironment(): EnvironmentPort {
   };
 }
 
+function throwingWorkingTree(): WorkingTreePort {
+  return {
+    scan: () => {
+      throw new Error("working tree must not be touched");
+    },
+  };
+}
+
 const CWD = path.parse(process.cwd()).root;
 
 test("--version succeeds without touching ports (no repository discovery)", async () => {
@@ -51,6 +60,7 @@ test("--version succeeds without touching ports (no repository discovery)", asyn
     fileSystem: throwingFileSystem(),
     repositoryDiscovery: throwingDiscovery(),
     environment: throwingEnvironment(),
+    workingTree: throwingWorkingTree(),
   };
   const outcome = await runCli({ argv: ["--version"], cwd: CWD, ports });
   assert.equal(outcome.exitCode, 0);
@@ -63,6 +73,7 @@ test("'--version' with extra arguments is a grammar error and touches no ports",
     fileSystem: throwingFileSystem(),
     repositoryDiscovery: throwingDiscovery(),
     environment: throwingEnvironment(),
+    workingTree: throwingWorkingTree(),
   };
   const outcome = await runCli({ argv: ["--version", "extra"], cwd: CWD, ports });
   assert.equal(outcome.exitCode, 1);
@@ -75,6 +86,7 @@ test("missing command", async () => {
     fileSystem: throwingFileSystem(),
     repositoryDiscovery: throwingDiscovery(),
     environment: throwingEnvironment(),
+    workingTree: throwingWorkingTree(),
   };
   const outcome = await runCli({ argv: [], cwd: CWD, ports });
   assert.equal(outcome.exitCode, 1);
@@ -87,6 +99,7 @@ test("unknown command", async () => {
     fileSystem: throwingFileSystem(),
     repositoryDiscovery: throwingDiscovery(),
     environment: throwingEnvironment(),
+    workingTree: throwingWorkingTree(),
   };
   const outcome = await runCli({ argv: ["frobnicate"], cwd: CWD, ports });
   assert.equal(outcome.exitCode, 1);
@@ -99,6 +112,7 @@ test("'init a b' (extra operand) is a grammar error and mutates nothing", async 
     fileSystem: throwingFileSystem(),
     repositoryDiscovery: throwingDiscovery(),
     environment: throwingEnvironment(),
+    workingTree: throwingWorkingTree(),
   };
   const outcome = await runCli({ argv: ["init", "a", "b"], cwd: CWD, ports });
   assert.equal(outcome.exitCode, 1);
@@ -111,6 +125,7 @@ test("'init --unknown' (unknown option) is a grammar error and mutates nothing",
     fileSystem: throwingFileSystem(),
     repositoryDiscovery: throwingDiscovery(),
     environment: throwingEnvironment(),
+    workingTree: throwingWorkingTree(),
   };
   const outcome = await runCli({ argv: ["init", "--unknown"], cwd: CWD, ports });
   assert.equal(outcome.exitCode, 1);
@@ -143,7 +158,7 @@ test("init success through runCli", async () => {
   const outcome = await runCli({
     argv: ["init", "repo"],
     cwd: CWD,
-    ports: { fileSystem, repositoryDiscovery, environment },
+    ports: { fileSystem, repositoryDiscovery, environment, workingTree: throwingWorkingTree() },
   });
 
   assert.equal(outcome.exitCode, 0);
@@ -160,7 +175,7 @@ test("init failure (already exists) through runCli", async () => {
   const outcome = await runCli({
     argv: ["init", "repo"],
     cwd: CWD,
-    ports: { fileSystem, repositoryDiscovery, environment },
+    ports: { fileSystem, repositoryDiscovery, environment, workingTree: throwingWorkingTree() },
   });
 
   assert.equal(outcome.exitCode, 1);
@@ -173,6 +188,7 @@ test("an unexpected throw from a handler maps to exit 2", async () => {
     fileSystem: throwingFileSystem(),
     repositoryDiscovery: throwingDiscovery(),
     environment: throwingEnvironment(),
+    workingTree: throwingWorkingTree(),
   };
   const outcome = await runCli({ argv: ["init"], cwd: CWD, ports });
   assert.equal(outcome.exitCode, 2);

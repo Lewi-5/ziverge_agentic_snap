@@ -14,7 +14,7 @@ const encoder = new TextEncoder();
  */
 export function validateMessage(text: string, options?: { readonly maxBytes?: number }): Result<string, DomainError> {
   if (text.length === 0) {
-    return err(domainError("validation", "message must not be empty"));
+    return err(domainError("validation", "patch message is empty"));
   }
   for (let index = 0; index < text.length; index += 1) {
     const codePoint = text.charCodeAt(index);

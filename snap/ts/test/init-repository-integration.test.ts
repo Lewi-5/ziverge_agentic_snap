@@ -6,6 +6,7 @@ import * as path from "node:path";
 import { initRepository } from "../src/application/init-repository.js";
 import { createNodeFileSystemAdapter } from "../src/adapters/node-filesystem-adapter.js";
 import { createNodeRepositoryDiscoveryAdapter } from "../src/adapters/node-repository-discovery-adapter.js";
+import { createRealCli } from "./support/real-cli.js";
 
 test("real filesystem: init preserves existing working files and rejects reinitialization/nesting through the same Node adapters main.ts uses", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "snap-init-"));
@@ -97,5 +98,38 @@ test("real filesystem: repository discovery rejects a symlinked path component",
     );
   } finally {
     await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("real filesystem end-to-end: init -> global config -> local config overrides it -> commit (scenario 03's precedence shape)", async () => {
+  const cli = await createRealCli();
+  try {
+    const globalConfig = await cli.run(["config", "--global", "contributor.id", "global@example.com"]);
+    assert.equal(globalConfig.exitCode, 0);
+
+    await cli.run(["init", "local"]);
+    const localConfig = await cli.run(["config", "contributor.id", "local@example.com"], `${cli.root}/local`);
+    assert.equal(localConfig.exitCode, 0);
+
+    await cli.writeFile("local/file.txt", "local\n");
+    const localCommit = await cli.run(["commit", "local-wins"], `${cli.root}/local`);
+    assert.equal(localCommit.exitCode, 0);
+    assert.equal(localCommit.stdout, "(local@example.com->1)\n");
+
+    // A second repository with no local config falls back to the (still valid) global one.
+    await cli.run(["init", "global"]);
+    await cli.writeFile("global/file.txt", "global\n");
+    const globalCommit = await cli.run(["commit", "global-fallback"], `${cli.root}/global`);
+    assert.equal(globalCommit.exitCode, 0);
+    assert.equal(globalCommit.stdout, "(global@example.com->1)\n");
+
+    // Once local config is malformed, it strictly blocks the global fallback, even though global is valid.
+    await cli.writeFile("local/.snap/config.json", "not json");
+    await cli.writeFile("local/file.txt", "local2\n");
+    const blocked = await cli.run(["commit", "should-fail"], `${cli.root}/local`);
+    assert.equal(blocked.exitCode, 1);
+    assert.match(blocked.stderr, /invalid JSON/);
+  } finally {
+    await cli.cleanup();
   }
 });

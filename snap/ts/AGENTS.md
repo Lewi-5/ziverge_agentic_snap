@@ -9,6 +9,8 @@ tests are the acceptance criteria. Use strict TypeScript, avoid `any`, and use
 ```bash
 npm ci
 npm run build                    # type-check
+npm run lint                     # type-aware linting with zero warnings
+npm run check                    # run both compiler and linter checks
 npm start -- <arguments>         # run the CLI
 ./snap <arguments>               # executable used by the public harness
 ```

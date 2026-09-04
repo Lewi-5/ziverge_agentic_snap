@@ -42,9 +42,26 @@ npm run check
 npm test
 ```
 
+## Committing work
+
+Commit to git after finishing each major chunk of work — a completed command,
+a completed layer (e.g. version algebra, replay/OT, filesystem
+materialization, CLI dispatch), or a fix plus its regression test — not after
+every small edit. Run the relevant verification (above) first and commit only
+once it passes. Prefer several focused commits over one large one at the end
+of a session.
+
 ## Scope discipline
 
 Snap’s small surface is deliberate. Do not add branches, staging, checkout,
 push, authentication, object storage, or unresolved-conflict machinery. Spend
 complexity on deterministic behavior, strict validation, and exact tests—not
 on production scalability or command count.
+
+## Decision log
+
+When implementing a major architectural, product, or behavioral decision,
+append a brief bullet describing the decision to [`decisions.md`](decisions.md).
+Add the note as part of the implementation work, keep it concise, and append it
+at the bottom without rewriting or removing existing entries. Do not log routine
+implementation details.

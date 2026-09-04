@@ -1,3 +1,14 @@
+## Completion note (2026-09-04)
+
+All five work packages below are implemented. Type checking, linting, and the emitted-JS unit
+suite (378/382, 4 pre-existing Windows symlink skips) pass, including new tests for every bullet
+in Work Package 4. Public scenario 26 passes on this Windows host; scenarios 12, 13, and 28 hang at
+their `stop` (default `SIGTERM`) step because Windows does not deliver a catchable `SIGTERM` to a
+Node child process — verified directly against the compiled binary outside the harness, not just
+inside it. See `snap/modules.md`'s M8 row and `module8PROGRESS.md` for full verification evidence
+and the exact remaining action (re-run 12/13/28 on a POSIX host). The plan below is left intact as
+the historical work breakdown.
+
 # Module 8 Remaining Work: Embedded HTTP and Remote Repositories
 
 ## Overview & Current State

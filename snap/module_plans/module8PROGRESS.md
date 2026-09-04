@@ -1,6 +1,24 @@
 # Module 8 Progress: Embedded HTTP and Remote Repositories
 
-## Status
+## Status (2026-09-04 update)
+
+**Implementation complete; verification complete except for a Windows-host signal-delivery limitation.**
+
+All work packages from `module8REMAINING.md` are implemented: the remote repository loader, the
+merged local/remote repository source adapter, the `serve` application command and its lifecycle,
+CLI wiring (including the readiness-flush architecture required by the test harness's `ready`
+pattern), and the M8 test suite (`serve-command.test.ts`, `server-presentation.test.ts`,
+`remote-merge-diff.test.ts`). See `snap/modules.md`'s M8 row for the exact verification evidence,
+including why public scenarios 12, 13, and 28 could not be run to completion on this Windows
+development host (they each `start` a `snap --serve` process and `stop` it with the harness's
+default `SIGTERM`, which Windows does not deliver to a Node child process as a catchable signal —
+confirmed independently of the test harness with a direct `kill -TERM` against the compiled
+binary). Scenario 26, which never spawns `--serve`, passes end-to-end on this host. `serve()`'s own
+signal-handling logic (registration, idempotent close/unregister, the `closed` promise) is fully
+exercised by unit tests using an injected fake `SignalPort`, independent of the OS's actual signal
+delivery.
+
+## Status (original, pre-completion)
 
 **Partially Implemented (Independent Network Adapters Complete)**
 

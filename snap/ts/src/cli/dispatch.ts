@@ -7,6 +7,7 @@ import { statusCommand } from "./commands/status.js";
 import { mergeCommand } from "./commands/merge.js";
 import { revertCommand } from "./commands/revert.js";
 import { versionCommand } from "./commands/version.js";
+import { serve } from "../application/commands/serve.js";
 import type { Command } from "./commands/command.js";
 import type { CommandRequest } from "./command-request.js";
 import { formatCliErrorLine, unexpectedErrorDetail } from "./errors.js";
@@ -98,11 +99,40 @@ export async function runCli(context: CliContext): Promise<CliOutcome> {
         : { exitCode: EXIT_EXPECTED_ERROR, stdout: "", stderr: renderError(result.error.detail, presentation) };
     }
 
+    if (parsed.value.kind === "serve") {
+      const httpServer = context.ports.httpServer;
+      const signal = context.ports.signal;
+      if (httpServer === undefined) throw new Error("http server adapter is unavailable");
+      if (signal === undefined) throw new Error("signal adapter is unavailable");
+
+      const result = await serve(context.cwd, parsed.value.port, { ...context.ports, httpServer, signal });
+      if (!result.ok) {
+        return { exitCode: EXIT_EXPECTED_ERROR, stdout: "", stderr: renderError(result.error.detail, presentation) };
+      }
+
+      // SPEC §7.9/§9: the startup URL is always plain, so either renderer
+      // produces the same bytes here; renderSuccess keeps the call site
+      // uniform with every other command result.
+      const urlText = renderSuccess({ kind: "serve-startup", url: result.value.url }, presentation);
+      const output = context.ports.output;
+      if (output !== undefined) {
+        // The URL must be flushed before the process waits for a shutdown
+        // signal (module8REMAINING.md work package 3), not buffered until
+        // this long-running command finally resolves.
+        await output.write(urlText);
+        await result.value.closed;
+        return { exitCode: EXIT_SUCCESS, stdout: "", stderr: "" };
+      }
+      await result.value.closed;
+      return { exitCode: EXIT_SUCCESS, stdout: urlText, stderr: "" };
+    }
+
     const name = commandName(parsed.value);
     const handler = name === undefined ? undefined : COMMANDS.get(name);
     if (handler === undefined) {
-      // The serve request is parsed in M7 so its grammar and port diagnostics
-      // are authoritative here. M8 supplies the long-running server handler.
+      // Unreachable in practice: "version" and "serve" are handled above,
+      // and every remaining CommandRequest kind has a COMMANDS entry. Kept
+      // as a defensive fallback rather than a non-null assertion.
       return { exitCode: EXIT_EXPECTED_ERROR, stdout: "", stderr: renderError(GRAMMAR_ERROR.detail, presentation) };
     }
 

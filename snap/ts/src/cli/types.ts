@@ -1,6 +1,9 @@
 import type { EnvironmentPort } from "../ports/environment-port.js";
 import type { FileSystemPort } from "../ports/filesystem-port.js";
+import type { HttpServerPort } from "../ports/http-server-port.js";
+import type { OutputPort } from "../ports/output-port.js";
 import type { RepositoryDiscoveryPort } from "../ports/repository-discovery-port.js";
+import type { SignalPort } from "../ports/signal-port.js";
 import type { TerminalPort } from "../ports/terminal-port.js";
 import type { WorkingTreePort } from "../ports/working-tree-port.js";
 import type { TreeMaterializationPort } from "../ports/tree-materialization-port.js";
@@ -21,6 +24,16 @@ export interface CliPorts {
    * "auto" mode, matching pre-M7 behavior.
    */
   readonly terminal?: TerminalPort;
+  /** Required only by `snap --serve`; optional for every other command. */
+  readonly httpServer?: HttpServerPort;
+  /** Required only by `snap --serve`; optional for every other command. */
+  readonly signal?: SignalPort;
+  /**
+   * Required only by `snap --serve`, which must flush its startup URL before
+   * awaiting shutdown rather than after the process exits. Every other
+   * command returns its output through `CliOutcome.stdout` instead.
+   */
+  readonly output?: OutputPort;
 }
 
 export interface CliContext {

@@ -3,10 +3,11 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { createNodeEnvironmentAdapter } from "../../src/adapters/node-environment-adapter.js";
 import { createNodeFileSystemAdapter } from "../../src/adapters/node-filesystem-adapter.js";
+import { createNodeHttpClientAdapter } from "../../src/adapters/node-http-client-adapter.js";
 import { createNodeRepositoryDiscoveryAdapter } from "../../src/adapters/node-repository-discovery-adapter.js";
 import { createNodeWorkingTreeAdapter } from "../../src/adapters/node-working-tree-adapter.js";
 import { createNodeTreeMaterializationAdapter } from "../../src/adapters/node-tree-materialization-adapter.js";
-import { createLocalRepositorySourceAdapter } from "../../src/adapters/local-repository-source-adapter.js";
+import { createRepositorySourceAdapter } from "../../src/adapters/repository-source-adapter.js";
 import { runCli } from "../../src/cli/dispatch.js";
 import type { CliOutcome } from "../../src/cli/types.js";
 
@@ -38,7 +39,8 @@ export async function createRealCli(): Promise<RealCli> {
   const environment = createNodeEnvironmentAdapter({ HOME: home });
   const workingTree = createNodeWorkingTreeAdapter(fileSystem);
   const treeMaterialization = createNodeTreeMaterializationAdapter();
-  const repositorySource = createLocalRepositorySourceAdapter(fileSystem);
+  const httpClient = createNodeHttpClientAdapter();
+  const repositorySource = createRepositorySourceAdapter(fileSystem, httpClient);
   const ports = { fileSystem, repositoryDiscovery, environment, workingTree, treeMaterialization, repositorySource };
 
   return {

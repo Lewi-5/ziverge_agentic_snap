@@ -1,7 +1,7 @@
 import { domainError, type DomainError } from "../../domain/errors.js";
+import { materializeVersion } from "../../domain/history/materialize.js";
 import { err, ok, type Result } from "../../domain/result.js";
 import { buildDiffRecords, type DiffRecord } from "../../domain/tree/diff-records.js";
-import { formatVersion } from "../../domain/version/format.js";
 import { parseVersion } from "../../domain/version/parse.js";
 import type { FileSystemPort } from "../../ports/filesystem-port.js";
 import type { RepositoryDiscoveryPort } from "../../ports/repository-discovery-port.js";
@@ -21,15 +21,13 @@ export async function diffWorkingTree(cwd: string, ports: DiffPorts): Promise<Re
   if (!loaded.ok) {
     return loaded;
   }
-  const currentTree = loaded.value.repository.versions.get(formatVersion(loaded.value.repository.document.frontier));
-  if (currentTree === undefined) {
-    return err(domainError("io", "internal: repository frontier has no materialized tree"));
-  }
+  const current = materializeVersion(loaded.value.repository.document, loaded.value.repository.document.frontier);
+  if (!current.ok) return current;
   const working = await readWorkingTree(loaded.value.repoRoot, ports);
   if (!working.ok) {
     return working;
   }
-  return ok(buildDiffRecords(currentTree, working.value));
+  return ok(buildDiffRecords(current.value.tree, working.value));
 }
 
 /** `snap diff <old> <new>` (SPEC §7.6): two locally known versions of the same repository. */
@@ -53,14 +51,14 @@ export async function diffVersions(
     return err(domainError("validation", `invalid version: ${newVersion.error.detail}`));
   }
 
-  const oldTree = loaded.value.repository.versions.get(formatVersion(oldVersion.value));
-  if (oldTree === undefined) {
+  const oldTree = materializeVersion(loaded.value.repository.document, oldVersion.value);
+  if (!oldTree.ok) {
     return err(domainError("validation", `unknown version: ${oldVersionText}`));
   }
-  const newTree = loaded.value.repository.versions.get(formatVersion(newVersion.value));
-  if (newTree === undefined) {
+  const newTree = materializeVersion(loaded.value.repository.document, newVersion.value);
+  if (!newTree.ok) {
     return err(domainError("validation", `unknown version: ${newVersionText}`));
   }
 
-  return ok(buildDiffRecords(oldTree, newTree));
+  return ok(buildDiffRecords(oldTree.value.tree, newTree.value.tree));
 }

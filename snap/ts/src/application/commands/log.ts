@@ -1,4 +1,5 @@
 import type { DomainError } from "../../domain/errors.js";
+import { schedulePatches } from "../../domain/history/ready-scheduler.js";
 import { computePatchResult } from "../../domain/repository/patch.js";
 import { ok, type Result } from "../../domain/result.js";
 import type { FileSystemPort } from "../../ports/filesystem-port.js";
@@ -21,20 +22,18 @@ export interface LogOutput {
 
 /**
  * `snap log` (SPEC §7.4): patches in reverse canonical integration order.
- * `LinearRepository.document.patches` is already stored in that order
- * (the same order `validateLinearRepository` replayed it in), so `log`
- * only reverses it — it never re-derives history order independently
- * (module3PLAN.md "Never use storage-array order as an independent history-
- * order implementation").
+ * The shared ready scheduler is the sole implementation of history order.
  */
 export async function log(input: LogInput, ports: LogPorts): Promise<Result<LogOutput, DomainError>> {
   const loaded = await loadLocalRepository(input.cwd, ports);
   if (!loaded.ok) {
     return loaded;
   }
+  const scheduled = schedulePatches(loaded.value.repository.document.patches);
+  if (!scheduled.ok) return scheduled;
 
   const entries: LogEntry[] = [];
-  for (const patch of loaded.value.repository.document.patches) {
+  for (const patch of scheduled.value) {
     const resultVersion = computePatchResult(patch.base, patch.author, patch.revision);
     if (!resultVersion.ok) {
       return resultVersion;

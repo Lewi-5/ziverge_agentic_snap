@@ -2,9 +2,9 @@ import * as path from "node:path";
 import { domainError, type DomainError } from "../../domain/errors.js";
 import { decodeUtf8Strict } from "../../domain/json/decode-utf8.js";
 import { parseJsonStrict } from "../../domain/json/parse-json-strict.js";
-import { validateLinearRepository } from "../../domain/repository/linear-history.js";
 import { decodeRepositoryDocument } from "../../domain/repository/schema.js";
-import type { LinearRepository } from "../../domain/repository/types.js";
+import type { ValidatedRepository } from "../../domain/repository/types.js";
+import { validateRepository } from "../../domain/repository/validate.js";
 import { err, ok, type Result } from "../../domain/result.js";
 import type { FileSystemPort } from "../../ports/filesystem-port.js";
 import type { RepositoryDiscoveryPort } from "../../ports/repository-discovery-port.js";
@@ -16,14 +16,14 @@ export interface LoadLocalRepositoryPorts {
 
 export interface LoadedRepository {
   readonly repoRoot: string;
-  readonly repository: LinearRepository;
+  readonly repository: ValidatedRepository;
 }
 
 /**
  * Discovers the nearest repository from `startDirectory`, loads
  * `.snap/repository.json` as bytes, and decodes/validates it through the
- * full staged boundary (fatal UTF-8 -> duplicate-aware JSON -> exact schema
- * -> generated-linear semantic validation). Every M3 read/write command
+ * full boundary (fatal UTF-8 -> duplicate-aware JSON -> exact schema ->
+ * causal closure -> exact-base semantics -> deterministic replay). Every command
  * routes through this one function rather than re-implementing discovery or
  * decoding.
  */
@@ -54,7 +54,7 @@ export async function loadLocalRepository(
   if (!schema.ok) {
     return schema;
   }
-  const validated = validateLinearRepository(schema.value);
+  const validated = validateRepository(schema.value);
   if (!validated.ok) {
     return validated;
   }

@@ -134,10 +134,10 @@ test("rejects more than one change for the same path in one patch", () => {
   assert.equal(result.ok, false);
 });
 
-test("rejects two patches that share the same base (branching, not a linear history)", () => {
+test("accepts concurrent patches that share the same base through the M5 validator", () => {
   const result = decodeAndValidate({
     format: 1,
-    frontier: [["alice@example.com", 1]],
+    frontier: [["alice@example.com", 1], ["bob@example.com", 1]],
     patches: [
       {
         author: "alice@example.com",
@@ -155,7 +155,7 @@ test("rejects two patches that share the same base (branching, not a linear hist
       },
     ],
   });
-  assert.equal(result.ok, false);
+  assert.equal(result.ok, true);
 });
 
 test("rejects a revision that does not equal base[author] + 1", () => {

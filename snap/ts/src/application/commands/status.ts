@@ -1,7 +1,7 @@
-import { domainError, type DomainError } from "../../domain/errors.js";
-import { err, ok, type Result } from "../../domain/result.js";
+import type { DomainError } from "../../domain/errors.js";
+import { materializeVersion } from "../../domain/history/materialize.js";
+import { ok, type Result } from "../../domain/result.js";
 import { compareTrees, type TreeDeltaRow } from "../../domain/tree/compare.js";
-import { formatVersion } from "../../domain/version/format.js";
 import type { Version } from "../../domain/version/types.js";
 import type { FileSystemPort } from "../../ports/filesystem-port.js";
 import type { RepositoryDiscoveryPort } from "../../ports/repository-discovery-port.js";
@@ -31,15 +31,13 @@ export async function status(input: StatusInput, ports: StatusPorts): Promise<Re
     return loaded;
   }
   const frontier = loaded.value.repository.document.frontier;
-  const currentTree = loaded.value.repository.versions.get(formatVersion(frontier));
-  if (currentTree === undefined) {
-    return err(domainError("io", "internal: repository frontier has no materialized tree"));
-  }
+  const current = materializeVersion(loaded.value.repository.document, frontier);
+  if (!current.ok) return current;
 
   const working = await readWorkingTree(loaded.value.repoRoot, ports);
   if (!working.ok) {
     return working;
   }
 
-  return ok({ version: frontier, rows: compareTrees(currentTree, working.value) });
+  return ok({ version: frontier, rows: compareTrees(current.value.tree, working.value) });
 }

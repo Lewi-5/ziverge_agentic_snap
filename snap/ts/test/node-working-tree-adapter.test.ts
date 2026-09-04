@@ -264,3 +264,47 @@ test("real filesystem: rejects a symlink cycle without infinite recursion", asyn
   }
 });
 
+test("real filesystem: rejects a file with a backslash in its name on POSIX filesystems", async (context) => {
+  if (process.platform === "win32") {
+    context.skip("Windows does not allow backslashes in filenames");
+    return;
+  }
+  const root = await withTempRepo(async (dir) => {
+    await fs.mkdir(path.join(dir, ".snap"), { recursive: true });
+    await fs.writeFile(path.join(dir, "bad\\name.txt"), "content\n", "utf8");
+  });
+  try {
+    const scanner = createNodeWorkingTreeAdapter(createNodeFileSystemAdapter());
+    const result = await scanner.scan(root);
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.ok(result.error.detail.includes("tracked path must not contain a backslash"));
+    }
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("real filesystem: rejects a file with an ASCII control character in its name with single-line escaping", async (context) => {
+  if (process.platform === "win32") {
+    context.skip("Windows does not allow control characters in filenames");
+    return;
+  }
+  const root = await withTempRepo(async (dir) => {
+    await fs.mkdir(path.join(dir, ".snap"), { recursive: true });
+    await fs.writeFile(path.join(dir, "bad\nname.txt"), "content\n", "utf8");
+  });
+  try {
+    const scanner = createNodeWorkingTreeAdapter(createNodeFileSystemAdapter());
+    const result = await scanner.scan(root);
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.ok(result.error.detail.includes("tracked path must not contain an ASCII control character"));
+      assert.ok(!result.error.detail.includes("\n"), "error detail must remain single-line by escaping newlines");
+    }
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+

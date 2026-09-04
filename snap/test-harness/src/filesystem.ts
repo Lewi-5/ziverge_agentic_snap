@@ -13,7 +13,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import type { EntryKind, ExpectedTreeEntry } from "./types.js";
 
@@ -28,13 +28,23 @@ export function createSandbox(): string {
   return root;
 }
 
+// Sandbox-relative paths in test fixtures and assertions are always
+// "/"-separated (SPEC/harness-contract format), independent of host OS.
+// Validate and normalize them with `path.posix`, not the platform-specific
+// `path` export -- on Windows that resolves to `path.win32`, whose
+// `normalize` rewrites "/" to "\\" and would reject every valid multi-segment
+// sandbox path as "not normalized". Only the final OS filesystem target
+// (built below via `resolve`/`join`/`relative` against the native `root`) is
+// a native path.
 export function sandboxPath(root: string, input: string, allowRoot = true): string {
-  if (input.includes("\0") || isAbsolute(input)) throw new Error(`path must be sandbox-relative: ${input}`);
-  const normalized = normalize(input);
+  if (input.includes("\0") || posix.isAbsolute(input) || isAbsolute(input)) {
+    throw new Error(`path must be sandbox-relative: ${input}`);
+  }
+  const normalized = posix.normalize(input);
   if (normalized !== input && !(input === "." && normalized === ".")) {
     throw new Error(`path must be normalized: ${input}`);
   }
-  if (normalized === ".." || normalized.startsWith(`..${sep}`)) {
+  if (normalized === ".." || normalized.startsWith("../")) {
     throw new Error(`path escapes sandbox: ${input}`);
   }
   if (!allowRoot && (normalized === "." || normalized === "")) {

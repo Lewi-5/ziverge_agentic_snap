@@ -37,9 +37,18 @@ function throwingDiscovery(): RepositoryDiscoveryPort {
   };
 }
 
+/**
+ * Every command reads SNAP_COLOR/NO_COLOR to resolve presentation (SPEC
+ * §7.11), so this stub allows exactly those two queries (as unset) and still
+ * throws for anything else, preserving the "no identity lookup" invariant
+ * these tests exist to check.
+ */
 function throwingEnvironment(): EnvironmentPort {
   return {
-    getEnv: () => {
+    getEnv: (name: string) => {
+      if (name === "SNAP_COLOR" || name === "NO_COLOR") {
+        return undefined;
+      }
       throw new Error("environment must not be touched");
     },
   };

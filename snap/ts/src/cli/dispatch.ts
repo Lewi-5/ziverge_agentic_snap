@@ -14,6 +14,7 @@ import { renderCommandResult } from "./render.js";
 import { formatCliErrorLineTerminal, renderCommandResultTerminal } from "./render-terminal.js";
 import type { CommandResult } from "./results.js";
 import type { CliContext, CliOutcome } from "./types.js";
+import type { TerminalPort } from "../ports/terminal-port.js";
 
 const COMMANDS: ReadonlyMap<string, Command> = new Map([
   ["init", initCommand],
@@ -24,7 +25,10 @@ const COMMANDS: ReadonlyMap<string, Command> = new Map([
   ["diff", diffCommand],
 ]);
 
-const NON_TTY_TERMINAL = { isStdoutTty: () => false, isStderrTty: () => false };
+const NON_TTY_TERMINAL: TerminalPort = {
+  isStdoutTty: (): boolean => false,
+  isStderrTty: (): boolean => false,
+};
 
 /**
  * Renders a successful CommandResult per the resolved presentation (SPEC

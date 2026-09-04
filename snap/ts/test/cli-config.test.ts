@@ -34,7 +34,17 @@ function throwingPorts(): CliPorts {
       listDirectory: fail,
     },
     repositoryDiscovery: { findRepositoryRoot: fail },
-    environment: { getEnv: fail },
+    // Every command reads SNAP_COLOR/NO_COLOR to resolve presentation (SPEC
+    // §7.11) before grammar is even checked, so allow exactly those two
+    // queries (as unset) and still fail on any other lookup.
+    environment: {
+      getEnv: (name: string) => {
+        if (name === "SNAP_COLOR" || name === "NO_COLOR") {
+          return undefined;
+        }
+        return fail();
+      },
+    },
     workingTree: { scan: fail },
   };
 }

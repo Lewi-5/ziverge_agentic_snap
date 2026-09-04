@@ -119,13 +119,13 @@ test("diff: an unsupported working tree entry fails the no-argument form", async
   }
 });
 
-test("diff: three or more arguments is a grammar error", async () => {
+test("diff: an unrecognized operand shape is a usage error (SPEC §7.6/§7.11, scenario 24)", async () => {
   const cli = await createRealCli();
   try {
     await cli.run(["init", "repo"]);
     const outcome = await cli.run(["diff", "()", "()", "()"], `${cli.root}/repo`);
     assert.equal(outcome.exitCode, 1);
-    assert.equal(outcome.stderr, "snap: invalid command or arguments\n");
+    assert.equal(outcome.stderr, "snap: usage: snap diff [<old> <new> [--repo <repository>]]\n");
   } finally {
     await cli.cleanup();
   }

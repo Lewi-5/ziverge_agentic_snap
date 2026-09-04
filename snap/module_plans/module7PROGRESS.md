@@ -77,3 +77,97 @@ The independent CLI grammar and terminal presentation primitives for M7 were imp
    - Run and pass public scenarios:
      - `snap/tests/14-cli-errors.yaml`
      - `snap/tests/24-cli-grammar-matrix.yaml`
+
+---
+
+## 2026-09-04 session: independent M7 work completed ahead of M6
+
+Picked up this module to find work that does not depend on M6 (`merge`/`revert`
+are still `Not Started`). Found that a concurrent session had, in the
+meantime, already landed most of item 2 above directly on `main` (commit
+`df00eff "module5"`): `src/main.ts` now constructs a `createNodeTerminalAdapter()`
+and passes it through `CliPorts.terminal`, and `src/cli/dispatch.ts` already
+called `resolvePresentation` and rendered success/error output through the
+plain/terminal renderer pair. **Note for future readers: this working tree is
+shared with at least one other concurrently-running agent session** — expect
+`git log` to move under you, and diff against current `HEAD` (not this note)
+before assuming what is or isn't done.
+
+On top of that baseline, this session completed and verified the following,
+entirely independent of M6:
+
+### 1. Fixed `diff` CLI grammar to use the shared parser (real scenario 14/24 bug)
+
+`src/cli/commands/diff.ts` previously had its own ad hoc argument check
+(0 args, or exactly 2 args, else `GRAMMAR_ERROR`) that predated
+`src/cli/grammar.ts`'s `parseCliArgs`. This produced the wrong diagnostic for
+malformed diff invocations: SPEC §7.6/§7.11 and scenario 14/24 require
+`snap: usage: snap diff [<old> <new> [--repo <repository>]]` for shapes like
+`diff v1` (one operand) or `diff v1 v2 repo --repo` (misplaced `--repo`), but
+the old code always emitted the generic `snap: invalid command or arguments`.
+Rewrote `diffCommand` to call `parseCliArgs(["diff", ...args])` and dispatch
+on the resulting `DiffRequest` (no old/new version -> working-tree diff; both
+present and no `repo` -> `diffVersions`; `repo` present -> throws, since
+cross-repository diff is M6/§9 scope and not yet implemented). Confirmed via
+the real CLI that scenario 14 now passes its diff-usage steps and **scenario
+24 (`24-cli-grammar-matrix`) passes in full**:
+`./snap/verify --lang ts --filter 24-cli-grammar-matrix` -> 1 passed.
+
+`./snap/verify --lang ts --filter 14-cli-errors` now fails only at the
+`revert` step (step 8, "unknown version" from `snap revert`), which is
+squarely M6 — everything before it, including the two diff-usage steps this
+session fixed, now passes.
+
+### 2. Fixed stale M1-era test invariants broken by presentation resolution
+
+Presentation resolution (SPEC §7.11) now reads `SNAP_COLOR`/`NO_COLOR` via
+`EnvironmentPort.getEnv` for **every** command, before grammar is even
+checked (an invalid `SNAP_COLOR` is rejected before command execution). Two
+pre-M7 test fixtures asserted the opposite ("environment must not be
+touched") for commands that don't need contributor-identity lookups
+(`init`, grammar-error cases). Updated `throwingEnvironment()` in
+`test/cli-dispatch.test.ts` and the inline environment stub in
+`throwingPorts()` in `test/cli-config.test.ts` to allow exactly
+`SNAP_COLOR`/`NO_COLOR` queries (returning `undefined`) while still throwing
+for any other key, preserving the tests' original intent (no
+identity/config lookup) without fighting spec-mandated behavior.
+
+### 3. Updated a stale diff grammar test
+
+`test/diff-command.test.ts`'s `"diff: three or more arguments is a grammar
+error"` test expected `snap: invalid command or arguments` for
+`diff () () ()`. Per `grammar.ts` (already covered by
+`test/cli-grammar-matrix.test.ts`) and scenario 24's matrix, an unrecognized
+operand-shaped diff invocation is a *usage* error, not a generic grammar
+error. Updated the test's name and expectation to match the shared grammar
+module's (correct, spec-aligned) behavior.
+
+### Verification run this session
+
+- `npx tsc --noEmit -p tsconfig.test.json`: clean.
+- `npx eslint "src/**/*.ts" --max-warnings 0`: clean.
+- Full compiled suite via `tsc -p tsconfig.test.json --noEmit false --outDir <dir> && node --test`
+  (workaround for the `tsx`/`uv_os_get_passwd` ENOMEM launcher issue noted by
+  M1/M2/M4/M5 on this Windows host — plain `tsc` + `node --test` runs fine):
+  **325/329 pass, 4 skipped** (pre-existing symlink-privilege skips), 0 fail.
+- `./snap/verify --lang ts --filter 24-cli-grammar-matrix`: **passes** (this
+  session confirmed the public verifier itself now runs on this Windows host
+  — it was blocked by a shebang/`spawn EFTYPE` issue as of M3's handoff note,
+  but `test-harness: fix spawn EFTYPE for shebang candidates on Windows`
+  (commit `778fa35`) and `test-harness: fix sandbox path validation to use
+  POSIX semantics on Windows` (commit `dd25f3a`) landed since then and
+  resolved it).
+- `./snap/verify --lang ts --filter 14-cli-errors`: fails only at the M6-owned
+  `revert` step; the diff-usage steps this session fixed now pass.
+- Re-ran `04-commit-status-log`, `05-diff-goldens`, `06-binary-and-empty`,
+  `25-config-version-path-boundaries`, and `15` for regression: all still
+  pass. `03-configuration` still fails, but on a pre-existing harness bug
+  (nested-JSON `}}` misparsed as a `{{...}}` interpolation token), unrelated
+  to this session's changes.
+
+### Still remaining for M7 completion (all now blocked on M6, not before)
+
+- Wire `merge`/`revert` into `dispatch.ts`'s `COMMANDS` map once M6 implements
+  them (grammar/`CommandRequest` support already exists).
+- Re-run scenario 14 end-to-end once `revert` exists.
+- Scenario 28 (`--serve` + terminal integration) remains M8 scope as planned.

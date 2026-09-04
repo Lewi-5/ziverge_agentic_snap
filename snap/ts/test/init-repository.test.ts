@@ -16,6 +16,7 @@ function recordingFileSystem(): RecordingFileSystem {
   return {
     writes,
     mkdirs,
+    entryKind: () => Promise.resolve("missing"),
     pathExists: () => Promise.resolve(false),
     isDirectory: () => Promise.resolve(false),
     mkdirRecursive: (targetPath) => {
@@ -30,8 +31,13 @@ function recordingFileSystem(): RecordingFileSystem {
   };
 }
 
-function discoveryReturning(root: string | null): RepositoryDiscoveryPort {
-  return { findRepositoryRoot: () => Promise.resolve(root) };
+function discoveryReturning(root: string | null, starts?: string[]): RepositoryDiscoveryPort {
+  return {
+    findRepositoryRoot: (start) => {
+      starts?.push(start);
+      return Promise.resolve(root);
+    },
+  };
 }
 
 const CWD = path.parse(process.cwd()).root;
@@ -39,9 +45,10 @@ const CWD = path.parse(process.cwd()).root;
 test("success: creates directory, .snap, and repository.json; returns the empty version", async () => {
   const target = path.join(CWD, "repo");
   const fileSystem = recordingFileSystem();
+  const discoveryStarts: string[] = [];
   const result = await initRepository(
     { cwd: CWD, targetPath: "repo" },
-    { fileSystem, repositoryDiscovery: discoveryReturning(null) },
+    { fileSystem, repositoryDiscovery: discoveryReturning(null, discoveryStarts) },
   );
 
   assert.equal(result.ok, true);
@@ -49,8 +56,10 @@ test("success: creates directory, .snap, and repository.json; returns the empty 
     assert.deepEqual(result.value.version, { components: [] });
   }
   assert.deepEqual(fileSystem.mkdirs, [target, path.join(target, ".snap")]);
+  assert.deepEqual(discoveryStarts, [target]);
   const written = fileSystem.writes.get(path.join(target, ".snap", "repository.json"));
   assert.notEqual(written, undefined);
+  assert.equal(written, '{\n  "format": 1,\n  "frontier": [],\n  "patches": []\n}\n');
   assert.deepEqual(JSON.parse(written ?? ""), { format: 1, frontier: [], patches: [] });
 });
 

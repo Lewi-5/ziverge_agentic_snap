@@ -1,5 +1,5 @@
 import * as fs from "node:fs/promises";
-import type { FileSystemPort } from "../ports/filesystem-port.js";
+import type { FileSystemEntryKind, FileSystemPort } from "../ports/filesystem-port.js";
 
 function isNodeErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
@@ -7,6 +7,27 @@ function isNodeErrnoException(error: unknown): error is NodeJS.ErrnoException {
 
 export function createNodeFileSystemAdapter(): FileSystemPort {
   return {
+    async entryKind(path: string): Promise<FileSystemEntryKind> {
+      try {
+        const stats = await fs.lstat(path);
+        if (stats.isSymbolicLink()) {
+          return "symlink";
+        }
+        if (stats.isDirectory()) {
+          return "directory";
+        }
+        if (stats.isFile()) {
+          return "file";
+        }
+        return "other";
+      } catch (error) {
+        if (isNodeErrnoException(error) && (error.code === "ENOENT" || error.code === "ENOTDIR")) {
+          return "missing";
+        }
+        throw error;
+      }
+    },
+
     async pathExists(path: string): Promise<boolean> {
       try {
         await fs.lstat(path);

@@ -87,7 +87,13 @@ export function parseJsonStrict(text: string): Result<unknown, DomainError> {
       skipWhitespace();
       expect(":");
       skipWhitespace();
-      result[key] = parseValue();
+      const val = parseValue();
+      Object.defineProperty(result, key, {
+        value: val,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
       skipWhitespace();
       const next = peekChar();
       if (next === ",") {

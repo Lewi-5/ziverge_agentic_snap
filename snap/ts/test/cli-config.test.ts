@@ -20,7 +20,7 @@ function throwingPorts(): CliPorts {
     throw new Error("ports must not be touched for a rejected grammar shape");
   };
   return {
-    fileSystem: { pathExists: fail, isDirectory: fail, mkdirRecursive: fail, writeFile: fail, readFileIfExists: fail },
+    fileSystem: { entryKind: fail, pathExists: fail, isDirectory: fail, mkdirRecursive: fail, writeFile: fail, readFileIfExists: fail },
     repositoryDiscovery: { findRepositoryRoot: fail },
     environment: { getEnv: fail },
   };
@@ -71,6 +71,7 @@ test("grammar: an unknown configuration key is a grammar error", async () => {
 
 test("grammar: an invalid contributor id reaches setConfig and fails with the exact diagnostic", async () => {
   const fileSystem: FileSystemPort = {
+    entryKind: () => Promise.resolve("missing"),
     pathExists: () => Promise.resolve(false),
     isDirectory: () => Promise.resolve(false),
     mkdirRecursive: () => Promise.resolve(),

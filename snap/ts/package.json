@@ -6,12 +6,12 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "build": "tsc --noEmit",
+    "build:test": "tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint \"src/**/*.ts\" --max-warnings 0",
-    "check": "npm run build && npm run lint",
+    "check": "npm run build && npm run build:test && npm run lint",
     "test:unit": "tsx --test \"test/**/*.test.ts\""
   },
   "devDependencies": {
-    "@esbuild/linux-x64": "^0.28.2",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.18.0",
     "eslint": "^10.10.0",

@@ -95,3 +95,27 @@ test("serializeConfiguration round-trips through parseJsonStrict and validateCon
     assert.deepEqual(revalidated.value, original.value);
   }
 });
+
+test("rejects configuration attempting prototype injection", () => {
+  const parsed = parseJsonStrict('{"__proto__":{"contributor":{"id":"evil@x"}}}');
+  assert.equal(parsed.ok, true);
+  if (parsed.ok) {
+    const result = validateConfiguration(parsed.value);
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.error.detail, "unknown field in configuration: __proto__");
+    }
+  }
+});
+
+test("rejects configuration with __proto__ alongside valid contributor", () => {
+  const parsed = parseJsonStrict('{"contributor":{"id":"good@x"},"__proto__":true}');
+  assert.equal(parsed.ok, true);
+  if (parsed.ok) {
+    const result = validateConfiguration(parsed.value);
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.error.detail, "unknown field in configuration: __proto__");
+    }
+  }
+});

@@ -3,6 +3,8 @@ export interface VersionComponent {
   readonly revision: number;
 }
 
+declare const versionBrand: unique symbol;
+
 /**
  * Invariant (established only by parseVersion / joinVersions, never by
  * callers constructing one by hand outside the domain layer): components
@@ -11,8 +13,9 @@ export interface VersionComponent {
  */
 export interface Version {
   readonly components: readonly VersionComponent[];
+  readonly [versionBrand]: true;
 }
 
-export const EMPTY_VERSION: Version = Object.freeze({ components: Object.freeze([]) });
+export const EMPTY_VERSION: Version = Object.freeze({ components: Object.freeze([]) }) as unknown as Version;
 
 export const MAX_REVISION = Number.MAX_SAFE_INTEGER;

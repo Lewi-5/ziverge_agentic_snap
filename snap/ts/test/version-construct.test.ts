@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 import { createVersion } from "../src/domain/version/construct.js";
 import { formatVersion } from "../src/domain/version/format.js";
 import { EMPTY_VERSION, MAX_REVISION } from "../src/domain/version/types.js";
+import type { Version } from "../src/domain/version/types.js";
+
+// The domain type is nominal: unchecked structural values cannot cross the trust boundary.
+// @ts-expect-error A Version can only be obtained from EMPTY_VERSION or a validating producer.
+const forgedVersion: Version = { components: [] };
+void forgedVersion;
 
 test("createVersion canonicalizes (sorts) an unsorted but otherwise valid component list", () => {
   const result = createVersion([
@@ -18,6 +24,14 @@ test("createVersion canonicalizes (sorts) an unsorted but otherwise valid compon
 test("createVersion rejects an invalid contributor id", () => {
   const result = createVersion([{ contributorId: "not-an-id", revision: 1 }]);
   assert.equal(result.ok, false);
+});
+
+test("createVersion escapes control characters in invalid contributor ids", () => {
+  const result = createVersion([{ contributorId: "bad\n@id", revision: 1 }]);
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.error.detail, "invalid contributor id 'bad\\x0a@id'");
+  }
 });
 
 test("createVersion rejects an out-of-range revision (zero, negative, non-integer, over max)", () => {

@@ -14,7 +14,7 @@ function throwingFileSystem(): FileSystemPort {
   const fail = (): never => {
     throw new Error("filesystem must not be touched");
   };
-  return { pathExists: fail, isDirectory: fail, mkdirRecursive: fail, writeFile: fail, readFileIfExists: fail };
+  return { entryKind: fail, pathExists: fail, isDirectory: fail, mkdirRecursive: fail, writeFile: fail, readFileIfExists: fail };
 }
 
 function throwingDiscovery(): RepositoryDiscoveryPort {
@@ -110,6 +110,7 @@ test("'init --unknown' (unknown option) is a grammar error and mutates nothing",
 test("init success through runCli", async () => {
   const writes = new Map<string, string>();
   const fileSystem: FileSystemPort = {
+    entryKind: () => Promise.resolve("missing"),
     pathExists: () => Promise.resolve(false),
     isDirectory: () => Promise.resolve(false),
     mkdirRecursive: () => Promise.resolve(),

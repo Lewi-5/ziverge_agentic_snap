@@ -17,6 +17,7 @@ function fileSystemWith(files: Readonly<Record<string, string>>): FileSystemPort
     throw new Error("not used in this test");
   };
   return {
+    entryKind: fail,
     pathExists: fail,
     isDirectory: fail,
     mkdirRecursive: fail,
@@ -116,6 +117,7 @@ test("invalid UTF-8 bytes in local config fail without reading global", async ()
     throw new Error("not used in this test");
   };
   const fileSystem: FileSystemPort = {
+    entryKind: fail,
     pathExists: fail,
     isDirectory: fail,
     mkdirRecursive: fail,
@@ -134,6 +136,7 @@ test("a permission-style read failure propagates as an unexpected error, not a f
     throw new Error("permission denied");
   };
   const fileSystem: FileSystemPort = {
+    entryKind: fail,
     pathExists: fail,
     isDirectory: fail,
     mkdirRecursive: fail,

@@ -24,7 +24,9 @@ test("real filesystem: init preserves existing working files and rejects reiniti
     const existingContents = await fs.readFile(path.join(repoDir, "existing.txt"), "utf8");
     assert.equal(existingContents, "keep me\n");
 
-    const manifest = JSON.parse(await fs.readFile(path.join(repoDir, ".snap", "repository.json"), "utf8")) as unknown;
+    const manifestText = await fs.readFile(path.join(repoDir, ".snap", "repository.json"), "utf8");
+    assert.equal(manifestText, '{\n  "format": 1,\n  "frontier": [],\n  "patches": []\n}\n');
+    const manifest = JSON.parse(manifestText) as unknown;
     assert.deepEqual(manifest, { format: 1, frontier: [], patches: [] });
 
     const reinit = await initRepository({ cwd: root, targetPath: "repo" }, ports);
@@ -40,12 +42,20 @@ test("real filesystem: init preserves existing working files and rejects reiniti
       assert.equal(insideExisting.error.detail, "cannot initialize inside repository");
     }
     await assert.rejects(fs.access(path.join(childDir, ".snap")));
+
+    const outsideTarget = path.join(repoDir, "new", "child");
+    const outsideToInside = await initRepository({ cwd: root, targetPath: "repo/new/child" }, ports);
+    assert.equal(outsideToInside.ok, false);
+    if (!outsideToInside.ok) {
+      assert.equal(outsideToInside.error.detail, "cannot initialize inside repository");
+    }
+    await assert.rejects(fs.access(path.join(outsideTarget, ".snap")));
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
 });
 
-test("real filesystem: symlinked directories are not treated as directories (not followed)", async () => {
+test("real filesystem: symlinked directories are not treated as directories (not followed)", async (context) => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "snap-symlink-"));
   try {
     const fileSystem = createNodeFileSystemAdapter();
@@ -55,7 +65,7 @@ test("real filesystem: symlinked directories are not treated as directories (not
     try {
       await fs.symlink(realDir, linkPath, "junction");
     } catch {
-      // In environments where symlink creation is restricted, skip
+      context.skip("symlink creation is restricted in this environment");
       return;
     }
     assert.equal(await fileSystem.isDirectory(linkPath), false);
@@ -65,3 +75,27 @@ test("real filesystem: symlinked directories are not treated as directories (not
   }
 });
 
+test("real filesystem: repository discovery rejects a symlinked path component", async (context) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "snap-discovery-symlink-"));
+  try {
+    const fileSystem = createNodeFileSystemAdapter();
+    const discovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
+    const realDir = path.join(root, "real");
+    const nested = path.join(realDir, "nested");
+    await fs.mkdir(nested, { recursive: true });
+    const linkPath = path.join(root, "link");
+    try {
+      await fs.symlink(realDir, linkPath, "junction");
+    } catch {
+      context.skip("symlink creation is restricted in this environment");
+      return;
+    }
+
+    await assert.rejects(
+      discovery.findRepositoryRoot(path.join(linkPath, "nested")),
+      /repository discovery does not follow symbolic links/u,
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

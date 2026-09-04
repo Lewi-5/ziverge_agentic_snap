@@ -67,7 +67,7 @@ steps:
           value: invalid JSON
   - write_file:
       path: home/.snapconfig.json
-      text: '{"contributor":{"id":"global@example.com"}}}}'
+      text: '{"contributor":{"id":"global@example.com"}}'
   - run:
       cwd: global
       args: [commit, global-fallback]

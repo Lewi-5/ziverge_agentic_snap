@@ -76,3 +76,14 @@ test("trailing content after a valid document is rejected", () => {
 test("unescaped control character in a string is rejected", () => {
   expectError('{"a":"line1\nline2"}', "invalid JSON");
 });
+
+test("__proto__ property is parsed as an own property without prototype pollution", () => {
+  const result = parseJsonStrict('{"__proto__":{"id":"evil@x"}}');
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    const value = result.value as Record<string, unknown>;
+    assert.equal(Object.getPrototypeOf(value), Object.prototype);
+    assert.equal(Object.hasOwn(value, "__proto__"), true);
+    assert.deepEqual(Object.keys(value), ["__proto__"]);
+  }
+});

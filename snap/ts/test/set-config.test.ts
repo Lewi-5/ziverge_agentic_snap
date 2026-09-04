@@ -12,6 +12,7 @@ function recordingFileSystem(): FileSystemPort & { readonly writes: Map<string, 
   const writes = new Map<string, string>();
   return {
     writes,
+    entryKind: () => Promise.resolve("missing"),
     pathExists: () => Promise.resolve(false),
     isDirectory: () => Promise.resolve(false),
     mkdirRecursive: () => Promise.resolve(),

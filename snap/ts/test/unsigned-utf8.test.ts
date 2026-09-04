@@ -31,4 +31,5 @@ test("sortByUnsignedUtf8 sorts a mixed sample by key", () => {
   const items = ["banana", "Apple", "éclair", "apple"];
   const sorted = sortByUnsignedUtf8(items, (item) => item);
   assert.deepEqual(sorted, ["Apple", "apple", "banana", "éclair"]);
+  assert.deepEqual(items, ["banana", "Apple", "éclair", "apple"]);
 });

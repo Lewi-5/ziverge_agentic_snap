@@ -1,4 +1,8 @@
+export type FileSystemEntryKind = "missing" | "file" | "directory" | "symlink" | "other";
+
 export interface FileSystemPort {
+  /** Classifies the path itself without following its final symbolic link. */
+  readonly entryKind: (path: string) => Promise<FileSystemEntryKind>;
   readonly pathExists: (path: string) => Promise<boolean>;
   readonly isDirectory: (path: string) => Promise<boolean>;
   readonly mkdirRecursive: (path: string) => Promise<void>;

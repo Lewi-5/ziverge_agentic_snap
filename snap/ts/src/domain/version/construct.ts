@@ -1,4 +1,4 @@
-import { domainError, type DomainError } from "../errors.js";
+import { domainError, escapeControlCharacters, type DomainError } from "../errors.js";
 import { err, ok, type Result } from "../result.js";
 import { sortByUnsignedUtf8 } from "../unsigned-utf8.js";
 import { isValidContributorId } from "./contributor-id.js";
@@ -21,7 +21,12 @@ export function createVersion(components: readonly VersionComponent[]): Result<V
   const seenIds = new Set<string>();
   for (const component of components) {
     if (!isValidContributorId(component.contributorId)) {
-      return err(domainError("validation", `invalid contributor id '${component.contributorId}'`));
+      return err(
+        domainError(
+          "validation",
+          `invalid contributor id '${escapeControlCharacters(component.contributorId)}'`,
+        ),
+      );
     }
     if (!Number.isInteger(component.revision) || component.revision < 1 || component.revision > MAX_REVISION) {
       return err(
@@ -37,5 +42,5 @@ export function createVersion(components: readonly VersionComponent[]): Result<V
   const sorted = sortByUnsignedUtf8(components, (component) => component.contributorId).map((component) =>
     Object.freeze({ ...component }),
   );
-  return ok(Object.freeze({ components: Object.freeze(sorted) }));
+  return ok(Object.freeze({ components: Object.freeze(sorted) }) as unknown as Version);
 }

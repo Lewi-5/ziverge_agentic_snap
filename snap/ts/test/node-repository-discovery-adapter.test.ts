@@ -5,12 +5,28 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { createNodeRepositoryDiscoveryAdapter } from "../src/adapters/node-repository-discovery-adapter.js";
 import { createNodeFileSystemAdapter } from "../src/adapters/node-filesystem-adapter.js";
-import type { FileSystemPort } from "../src/ports/filesystem-port.js";
+import type { FileSystemEntryKind, FileSystemPort } from "../src/ports/filesystem-port.js";
 
-function fakeFileSystem(options: { directories?: readonly string[]; files?: readonly string[] }): FileSystemPort {
+function fakeFileSystem(options: {
+  directories?: readonly string[];
+  files?: readonly string[];
+  symlinks?: readonly string[];
+}): FileSystemPort {
   const dirs = new Set(options.directories ?? []);
   const files = new Set(options.files ?? []);
+  const symlinks = new Set(options.symlinks ?? []);
   return {
+    entryKind: (candidate) => {
+      let kind: FileSystemEntryKind = "missing";
+      if (dirs.has(candidate)) {
+        kind = "directory";
+      } else if (files.has(candidate)) {
+        kind = "file";
+      } else if (symlinks.has(candidate)) {
+        kind = "symlink";
+      }
+      return Promise.resolve(kind);
+    },
     pathExists: (candidate) => Promise.resolve(dirs.has(candidate) || files.has(candidate)),
     isDirectory: (candidate) => Promise.resolve(dirs.has(candidate)),
     mkdirRecursive: () => Promise.reject(new Error("not used in this test")),
@@ -30,6 +46,13 @@ test("finds .snap/repository.json exactly at the start directory", async () => {
   assert.equal(await discovery.findRepositoryRoot(REPO), REPO);
 });
 
+test("finds .snap/repository.json when start directory has trailing slash or is unnormalized", async () => {
+  const fileSystem = fakeFileSystem({ directories: [REPO, SNAP_DIR], files: [REPO_MANIFEST] });
+  const discovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
+  assert.equal(await discovery.findRepositoryRoot(REPO + path.sep), REPO);
+  assert.equal(await discovery.findRepositoryRoot(path.join(REPO, "child", "..")), REPO);
+});
+
 test("finds .snap/repository.json at an ancestor directory", async () => {
   const fileSystem = fakeFileSystem({ directories: [REPO, SNAP_DIR], files: [REPO_MANIFEST] });
   const discovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
@@ -47,6 +70,28 @@ test("a directory named repository.json inside .snap is not a valid repository",
   const fileSystem = fakeFileSystem({ directories: [REPO, SNAP_DIR, REPO_MANIFEST], files: [] });
   const discovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
   assert.equal(await discovery.findRepositoryRoot(REPO), null);
+});
+
+test("a symlink named repository.json inside .snap is not a valid repository", async () => {
+  const fileSystem = fakeFileSystem({ directories: [REPO, SNAP_DIR], symlinks: [REPO_MANIFEST] });
+  const discovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
+  assert.equal(await discovery.findRepositoryRoot(REPO), null);
+});
+
+test("a symlinked .snap directory is not a repository", async () => {
+  const fileSystem = fakeFileSystem({ directories: [REPO], symlinks: [SNAP_DIR] });
+  const discovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
+  assert.equal(await discovery.findRepositoryRoot(REPO), null);
+});
+
+test("rejects traversal through a symlinked existing path component", async () => {
+  const linked = path.join(ROOT, "linked");
+  const fileSystem = fakeFileSystem({ symlinks: [linked] });
+  const discovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
+  await assert.rejects(
+    discovery.findRepositoryRoot(path.join(linked, "child")),
+    /repository discovery does not follow symbolic links/u,
+  );
 });
 
 test("a missing target directory still discovers a repository at its nearest existing ancestor", async () => {

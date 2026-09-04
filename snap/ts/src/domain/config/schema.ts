@@ -23,7 +23,7 @@ export function validateConfiguration(value: unknown): Result<SnapConfiguration,
       return err(domainError("validation", `unknown field in configuration: ${escapeControlCharacters(key)}`));
     }
   }
-  const contributor: unknown = value["contributor"];
+  const contributor: unknown = Object.hasOwn(value, "contributor") ? value["contributor"] : undefined;
   if (contributor === undefined) {
     return err(domainError("validation", "missing field in configuration: contributor"));
   }
@@ -35,7 +35,7 @@ export function validateConfiguration(value: unknown): Result<SnapConfiguration,
       return err(domainError("validation", `unknown field in configuration: ${escapeControlCharacters(key)}`));
     }
   }
-  const id: unknown = contributor["id"];
+  const id: unknown = Object.hasOwn(contributor, "id") ? contributor["id"] : undefined;
   if (id === undefined) {
     return err(domainError("validation", "missing field in configuration: contributor.id"));
   }

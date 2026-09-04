@@ -25,7 +25,12 @@ test("round trip: format(parse(x)) === x", () => {
 });
 
 test("parse(format(v)) reconstructs v", () => {
-  const version = { components: [{ contributorId: "a@x", revision: 1 }] };
+  const parsedFixture = parseVersion("(a@x->1)");
+  assert.equal(parsedFixture.ok, true);
+  if (!parsedFixture.ok) {
+    return;
+  }
+  const version = parsedFixture.value;
   const result = parseVersion(formatVersion(version));
   assert.equal(result.ok, true);
   if (result.ok) {

@@ -1,5 +1,19 @@
 # Snap — agent guidance
 
+## Implementation plan
+
+Before starting or reviewing implementation work, read [`PLAN.md`](PLAN.md).
+Use its architecture boundaries, milestone dependencies, agent ownership model,
+and verification gates to coordinate changes. The specification and public YAML
+suite remain authoritative if the plan ever conflicts with them.
+
+## Module tracking
+
+Use [`modules.md`](modules.md) as the only progress tracker. Before starting work,
+review it and record the active module's status, owner, and immediate objective.
+At handoff or completion, record the latest verification and a concise handoff
+note, following the completion rules in [`PLAN.md`](PLAN.md).
+
 ## Sources of truth
 
 [`SPEC.md`](SPEC.md) is the canonical product contract. Public behavior must be

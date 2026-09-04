@@ -7,7 +7,8 @@
     "start": "tsx src/main.ts",
     "build": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\" --max-warnings 0",
-    "check": "npm run build && npm run lint"
+    "check": "npm run build && npm run lint",
+    "test:unit": "tsx --test \"test/**/*.test.ts\""
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

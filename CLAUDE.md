@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Implementation plan
+
+Before starting or reviewing Snap implementation work, read
+[`snap/PLAN.md`](snap/PLAN.md). Follow its architecture boundaries, milestone
+dependencies, agent ownership model, and verification gates. The specification
+and public acceptance suite remain authoritative if the plan conflicts with either.
+
+## Module tracking
+
+Use [`snap/modules.md`](snap/modules.md) as the only progress tracker. Before
+starting work, review it and record the active module's status, owner, and immediate
+objective. At handoff or completion, record the latest verification and a concise
+handoff note, following the completion rules in the implementation plan.
+
 ## Repository layout
 
 This repo currently contains one capstone project, `snap/` (a small local

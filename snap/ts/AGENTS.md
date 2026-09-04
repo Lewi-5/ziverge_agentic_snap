@@ -4,6 +4,9 @@ Implement the contract in the packaged `SPEC.md`; the language-neutral public
 tests are the acceptance criteria. Use strict TypeScript, avoid `any`, and use
 `node:` prefixes for Node built-ins.
 
+Update status in [`../modules.md`](../modules.md) as you work through each milestone.
+
+
 ## Setup, build, run, and test
 
 ```bash

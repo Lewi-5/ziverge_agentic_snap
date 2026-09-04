@@ -1,4 +1,4 @@
-import { diffVersions, diffWorkingTree } from "../../application/commands/diff.js";
+import { diffAcrossRepositories, diffVersions, diffWorkingTree } from "../../application/commands/diff.js";
 import { err, ok } from "../../domain/result.js";
 import { parseCliArgs } from "../grammar.js";
 import type { Command } from "./command.js";
@@ -24,9 +24,11 @@ export const diffCommand: Command = async (args, context) => {
   }
 
   if (request.repo !== undefined) {
-    // Cross-repository diff (SPEC §9) requires M6's local cross-repository
-    // diff support, which does not exist yet.
-    throw new Error("cross-repository diff is not yet implemented");
+    const newVersionText = request.newVersion;
+    if (newVersionText === undefined) throw new Error("unreachable: cross-repository diff lacks a new version");
+    const result = await diffAcrossRepositories(context.cwd, request.oldVersion, newVersionText, request.repo, context.ports);
+    if (!result.ok) return err(result.error);
+    return ok({ kind: "diff", records: result.value });
   }
 
   const newVersionText = request.newVersion;

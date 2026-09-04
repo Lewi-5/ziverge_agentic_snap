@@ -40,7 +40,7 @@ test("renders committed, reverted, and merged in terminal mode", () => {
     `${styleAnsi(ANSI_GREEN, "✓")} ${styleAnsi(ANSI_BOLD, "Reverted")} ${styleAnsi(ANSI_CYAN, "(alice@example.com->1)")}\n`,
   );
 
-  const merged = renderCommandResultTerminal({ kind: "merged", version: ver });
+  const merged = renderCommandResultTerminal({ kind: "merged", version: ver, warnings: [] });
   assert.equal(
     merged,
     `${styleAnsi(ANSI_GREEN, "✓")} ${styleAnsi(ANSI_BOLD, "Merged")} ${styleAnsi(ANSI_CYAN, "(alice@example.com->1)")}\n`,

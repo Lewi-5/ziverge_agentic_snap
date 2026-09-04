@@ -1,6 +1,7 @@
 import type { DiffRecord } from "../domain/tree/diff-records.js";
 import type { TreeDeltaRow } from "../domain/tree/compare.js";
 import type { Version } from "../domain/version/types.js";
+import type { WarningFact } from "../domain/history/warnings.js";
 
 export interface LogEntry {
   readonly version: Version;
@@ -26,5 +27,5 @@ export type CommandResult =
   | { readonly kind: "diff"; readonly records: readonly DiffRecord[] }
   | { readonly kind: "committed"; readonly version: Version }
   | { readonly kind: "reverted"; readonly version: Version }
-  | { readonly kind: "merged"; readonly version: Version }
+  | { readonly kind: "merged"; readonly version: Version; readonly warnings: readonly WarningFact[] }
   | { readonly kind: "serve-startup"; readonly url: string };

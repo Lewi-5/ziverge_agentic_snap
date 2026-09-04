@@ -5,6 +5,8 @@ import { createNodeEnvironmentAdapter } from "../../src/adapters/node-environmen
 import { createNodeFileSystemAdapter } from "../../src/adapters/node-filesystem-adapter.js";
 import { createNodeRepositoryDiscoveryAdapter } from "../../src/adapters/node-repository-discovery-adapter.js";
 import { createNodeWorkingTreeAdapter } from "../../src/adapters/node-working-tree-adapter.js";
+import { createNodeTreeMaterializationAdapter } from "../../src/adapters/node-tree-materialization-adapter.js";
+import { createLocalRepositorySourceAdapter } from "../../src/adapters/local-repository-source-adapter.js";
 import { runCli } from "../../src/cli/dispatch.js";
 import type { CliOutcome } from "../../src/cli/types.js";
 
@@ -35,7 +37,9 @@ export async function createRealCli(): Promise<RealCli> {
   const repositoryDiscovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
   const environment = createNodeEnvironmentAdapter({ HOME: home });
   const workingTree = createNodeWorkingTreeAdapter(fileSystem);
-  const ports = { fileSystem, repositoryDiscovery, environment, workingTree };
+  const treeMaterialization = createNodeTreeMaterializationAdapter();
+  const repositorySource = createLocalRepositorySourceAdapter(fileSystem);
+  const ports = { fileSystem, repositoryDiscovery, environment, workingTree, treeMaterialization, repositorySource };
 
   return {
     root,

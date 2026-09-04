@@ -1,6 +1,11 @@
 import { renderDiffPlain } from "./render-diff-plain.js";
 import { formatVersion } from "../domain/version/format.js";
 import type { CommandResult } from "./results.js";
+import type { WarningFact } from "../domain/history/warnings.js";
+
+export function renderWarningFactsPlain(warnings: readonly WarningFact[]): string {
+  return warnings.map((warning) => `warning: auto-resolved ${warning.path}: ${warning.reason}\n`).join("");
+}
 
 /**
  * Escapes a log message for plain-mode `log` (SPEC §7.4): backslash, then

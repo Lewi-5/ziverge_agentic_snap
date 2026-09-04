@@ -2,11 +2,7 @@ import { domainError, type DomainError } from "../../domain/errors.js";
 import { materializeVersion } from "../../domain/history/materialize.js";
 import { validateMessage } from "../../domain/repository/message.js";
 import { computePatchResult, constructPatch, sortPatches } from "../../domain/repository/patch.js";
-import { decodeRepositoryDocument } from "../../domain/repository/schema.js";
-import { serializeRepositoryDocument } from "../../domain/repository/serialize.js";
 import type { RepositoryDocument } from "../../domain/repository/types.js";
-import { validateRepository } from "../../domain/repository/validate.js";
-import { parseJsonStrict } from "../../domain/json/parse-json-strict.js";
 import { err, ok, type Result } from "../../domain/result.js";
 import { selectAuthoredChanges } from "../../domain/tree/change.js";
 import type { Version } from "../../domain/version/types.js";
@@ -15,6 +11,7 @@ import type { FileSystemPort } from "../../ports/filesystem-port.js";
 import type { RepositoryDiscoveryPort } from "../../ports/repository-discovery-port.js";
 import type { WorkingTreePort } from "../../ports/working-tree-port.js";
 import { resolveContributorId } from "../config/resolve-contributor-id.js";
+import { validatePreparedRepository } from "../repository/decode-repository.js";
 import { loadLocalRepository } from "../repository/load-local-repository.js";
 import { publishRepository } from "../repository/publish-repository.js";
 import { readWorkingTree } from "../working-tree/read-working-tree.js";
@@ -103,15 +100,7 @@ export async function commit(input: CommitInput, ports: CommitPorts): Promise<Re
   // Re-run the complete decode/validate boundary over the document about to
   // be published, the same way any other reader would see it, rather than
   // trusting the in-memory construction above (PLAN.md "Validation boundary").
-  const reencoded = parseJsonStrict(serializeRepositoryDocument(preparedDocument));
-  if (!reencoded.ok) {
-    return reencoded;
-  }
-  const redecoded = decodeRepositoryDocument(reencoded.value);
-  if (!redecoded.ok) {
-    return redecoded;
-  }
-  const revalidated = validateRepository(redecoded.value);
+  const revalidated = validatePreparedRepository(preparedDocument);
   if (!revalidated.ok) {
     return revalidated;
   }

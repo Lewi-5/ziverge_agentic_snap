@@ -1,3 +1,4 @@
+import { configCommand } from "./commands/config.js";
 import { initCommand } from "./commands/init.js";
 import { versionCommand } from "./commands/version.js";
 import type { Command } from "./commands/command.js";
@@ -7,7 +8,10 @@ import { GRAMMAR_ERROR } from "./grammar.js";
 import { renderCommandResult } from "./render.js";
 import type { CliContext, CliOutcome } from "./types.js";
 
-const COMMANDS: ReadonlyMap<string, Command> = new Map([["init", initCommand]]);
+const COMMANDS: ReadonlyMap<string, Command> = new Map([
+  ["init", initCommand],
+  ["config", configCommand],
+]);
 
 export async function runCli(context: CliContext): Promise<CliOutcome> {
   if (context.argv[0] === "--version") {

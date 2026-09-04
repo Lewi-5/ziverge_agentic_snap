@@ -9,4 +9,5 @@ import type { Version } from "../domain/version/types.js";
  */
 export type CommandResult =
   | { readonly kind: "initialized"; readonly version: Version }
-  | { readonly kind: "version-info"; readonly version: string };
+  | { readonly kind: "version-info"; readonly version: string }
+  | { readonly kind: "silent" };

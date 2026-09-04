@@ -26,6 +26,7 @@ function recordingFileSystem(): RecordingFileSystem {
       writes.set(targetPath, contents);
       return Promise.resolve();
     },
+    readFileIfExists: () => Promise.resolve(null),
   };
 }
 

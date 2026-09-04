@@ -3,4 +3,6 @@ export interface FileSystemPort {
   readonly isDirectory: (path: string) => Promise<boolean>;
   readonly mkdirRecursive: (path: string) => Promise<void>;
   readonly writeFile: (path: string, contents: string) => Promise<void>;
+  /** Returns raw bytes, or `null` only for a missing path (`ENOENT`/`ENOTDIR`); other I/O errors throw. */
+  readonly readFileIfExists: (path: string) => Promise<Uint8Array | null>;
 }

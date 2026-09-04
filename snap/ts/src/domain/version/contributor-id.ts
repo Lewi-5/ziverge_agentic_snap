@@ -1,3 +1,6 @@
+import { domainError, escapeControlCharacters, type DomainError } from "../errors.js";
+import { err, ok, type Result } from "../result.js";
+
 const encoder = new TextEncoder();
 const MAX_CONTRIBUTOR_ID_BYTES = 254;
 
@@ -28,4 +31,19 @@ export function isValidContributorId(id: string): boolean {
     return false;
   }
   return true;
+}
+
+/**
+ * A contributor ID that has passed `isValidContributorId`. Application and
+ * config code carry this branded value rather than an unchecked `string` so
+ * an unvalidated ID cannot silently reach a patch author or config document.
+ */
+export type ContributorId = string & { readonly __brand: "ContributorId" };
+
+/** The single validating constructor for `ContributorId` (SPEC §3.1). */
+export function createContributorId(id: string): Result<ContributorId, DomainError> {
+  if (!isValidContributorId(id)) {
+    return err(domainError("validation", `invalid contributor id: ${escapeControlCharacters(id)}`));
+  }
+  return ok(id as ContributorId);
 }

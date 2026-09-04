@@ -30,7 +30,10 @@ export default tseslint.config(
       "@typescript-eslint/explicit-module-boundary-types": "error",
       "@typescript-eslint/no-import-type-side-effects": "error",
       "@typescript-eslint/no-unnecessary-qualifier": "error",
-      "@typescript-eslint/prefer-readonly-parameter-types": "error",
+      "@typescript-eslint/prefer-readonly-parameter-types": [
+        "error",
+        { allow: [{ from: "lib", name: "Uint8Array" }] },
+      ],
       "@typescript-eslint/require-array-sort-compare": "error",
       "@typescript-eslint/strict-boolean-expressions": "error",
       "@typescript-eslint/switch-exhaustiveness-check": "error",

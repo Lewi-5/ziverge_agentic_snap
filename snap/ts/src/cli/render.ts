@@ -8,5 +8,7 @@ export function renderCommandResult(result: CommandResult): string {
       return `${formatVersion(result.version)}\n`;
     case "version-info":
       return `snap ${result.version}\n`;
+    case "silent":
+      return "";
   }
 }

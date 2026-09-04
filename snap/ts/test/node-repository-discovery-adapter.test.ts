@@ -15,6 +15,7 @@ function fakeFileSystem(options: { directories?: readonly string[]; files?: read
     isDirectory: (candidate) => Promise.resolve(dirs.has(candidate)),
     mkdirRecursive: () => Promise.reject(new Error("not used in this test")),
     writeFile: () => Promise.reject(new Error("not used in this test")),
+    readFileIfExists: () => Promise.reject(new Error("not used in this test")),
   };
 }
 

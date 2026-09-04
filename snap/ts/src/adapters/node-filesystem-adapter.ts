@@ -38,5 +38,17 @@ export function createNodeFileSystemAdapter(): FileSystemPort {
     async writeFile(path: string, contents: string): Promise<void> {
       await fs.writeFile(path, contents, "utf8");
     },
+
+    async readFileIfExists(path: string): Promise<Uint8Array | null> {
+      try {
+        const buffer = await fs.readFile(path);
+        return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+      } catch (error) {
+        if (isNodeErrnoException(error) && (error.code === "ENOENT" || error.code === "ENOTDIR")) {
+          return null;
+        }
+        throw error;
+      }
+    },
   };
 }

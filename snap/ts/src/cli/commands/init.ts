@@ -1,15 +1,18 @@
 import { err, ok } from "../../domain/result.js";
 import { initRepository } from "../../application/init-repository.js";
-import { GRAMMAR_ERROR } from "../grammar.js";
+import { parseCliArgs } from "../grammar.js";
 import type { Command } from "./command.js";
 
 export const initCommand: Command = async (args, context) => {
-  const first = args[0];
-  if (first?.startsWith("-") === true || args.length > 1) {
-    return err(GRAMMAR_ERROR);
+  const parsed = parseCliArgs(["init", ...args]);
+  if (!parsed.ok) {
+    return err(parsed.error);
+  }
+  if (parsed.value.kind !== "init") {
+    throw new Error("unreachable: init grammar returned another command");
   }
 
-  const targetPath = first ?? ".";
+  const targetPath = parsed.value.path ?? ".";
   const result = await initRepository({ cwd: context.cwd, targetPath }, context.ports);
   if (!result.ok) {
     return err(result.error);

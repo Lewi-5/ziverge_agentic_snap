@@ -1,12 +1,13 @@
 import { status } from "../../application/commands/status.js";
 import { err, ok } from "../../domain/result.js";
-import { GRAMMAR_ERROR } from "../grammar.js";
+import { parseCliArgs } from "../grammar.js";
 import type { Command } from "./command.js";
 
 /** `snap status` (SPEC §7.3). */
 export const statusCommand: Command = async (args, context) => {
-  if (args.length !== 0) {
-    return err(GRAMMAR_ERROR);
+  const parsed = parseCliArgs(["status", ...args]);
+  if (!parsed.ok) {
+    return err(parsed.error);
   }
   const result = await status({ cwd: context.cwd }, context.ports);
   if (!result.ok) {

@@ -11,12 +11,12 @@ import type { Version } from "../../domain/version/types.js";
 import type { FileSystemPort } from "../../ports/filesystem-port.js";
 import type { RepositoryDiscoveryPort } from "../../ports/repository-discovery-port.js";
 import type { RepositorySourcePort } from "../../ports/repository-source-port.js";
+import { classifyRepositorySource } from "../../ports/repository-source.js";
 import type { TreeMaterializationPort } from "../../ports/tree-materialization-port.js";
 import type { WorkingTreePort } from "../../ports/working-tree-port.js";
 import { validatePreparedRepository } from "../repository/decode-repository.js";
 import { loadLocalRepository } from "../repository/load-local-repository.js";
 import { publishRepository } from "../repository/publish-repository.js";
-import { classifyRepositorySource } from "../repository/source.js";
 import { readWorkingTree } from "../working-tree/read-working-tree.js";
 
 export interface MergePorts {

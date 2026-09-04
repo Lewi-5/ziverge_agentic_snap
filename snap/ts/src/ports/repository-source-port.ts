@@ -1,7 +1,7 @@
-import type { RepositorySource } from "../application/repository/source.js";
 import type { DomainError } from "../domain/errors.js";
 import type { ValidatedRepository } from "../domain/repository/types.js";
 import type { Result } from "../domain/result.js";
+import type { RepositorySource } from "./repository-source.js";
 
 export interface LoadedRepositorySource {
   readonly repository: ValidatedRepository;

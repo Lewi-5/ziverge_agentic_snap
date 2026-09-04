@@ -6,10 +6,10 @@ import { checkPatchCollisions } from "../../domain/repository/union.js";
 import { parseVersion } from "../../domain/version/parse.js";
 import type { FileSystemPort } from "../../ports/filesystem-port.js";
 import type { RepositoryDiscoveryPort } from "../../ports/repository-discovery-port.js";
-import type { WorkingTreePort } from "../../ports/working-tree-port.js";
 import type { RepositorySourcePort } from "../../ports/repository-source-port.js";
+import { classifyRepositorySource } from "../../ports/repository-source.js";
+import type { WorkingTreePort } from "../../ports/working-tree-port.js";
 import { loadLocalRepository } from "../repository/load-local-repository.js";
-import { classifyRepositorySource } from "../repository/source.js";
 import { readWorkingTree } from "../working-tree/read-working-tree.js";
 
 export interface DiffPorts {

@@ -8,7 +8,7 @@ import { createNodeSignalAdapter } from "./adapters/node-signal-adapter.js";
 import { createNodeTerminalAdapter } from "./adapters/node-terminal-adapter.js";
 import { createNodeWorkingTreeAdapter } from "./adapters/node-working-tree-adapter.js";
 import { createNodeTreeMaterializationAdapter } from "./adapters/node-tree-materialization-adapter.js";
-import { createRepositorySourceAdapter } from "./adapters/repository-source-adapter.js";
+import { createRepositorySourceAdapter } from "./application/repository/create-repository-source.js";
 import { runCli } from "./cli/dispatch.js";
 
 async function main(): Promise<void> {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { createRepositorySourceAdapter } from "../src/adapters/repository-source-adapter.js";
+import { createRepositorySourceAdapter } from "../src/application/repository/create-repository-source.js";
 import { loadRemoteRepository } from "../src/application/repository/load-remote-repository.js";
 import { merge } from "../src/application/commands/merge.js";
 import { diffAcrossRepositories } from "../src/application/commands/diff.js";

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyRepositorySource } from "../src/application/repository/source.js";
+import { classifyRepositorySource } from "../src/ports/repository-source.js";
 
 test("classifyRepositorySource correctly categorizes remote and local operands", () => {
   assert.deepEqual(classifyRepositorySource("http://127.0.0.1:8765/repository.json"), {

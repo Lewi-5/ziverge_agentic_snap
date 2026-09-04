@@ -7,7 +7,7 @@ import { createNodeHttpClientAdapter } from "../../src/adapters/node-http-client
 import { createNodeRepositoryDiscoveryAdapter } from "../../src/adapters/node-repository-discovery-adapter.js";
 import { createNodeWorkingTreeAdapter } from "../../src/adapters/node-working-tree-adapter.js";
 import { createNodeTreeMaterializationAdapter } from "../../src/adapters/node-tree-materialization-adapter.js";
-import { createRepositorySourceAdapter } from "../../src/adapters/repository-source-adapter.js";
+import { createRepositorySourceAdapter } from "../../src/application/repository/create-repository-source.js";
 import { runCli } from "../../src/cli/dispatch.js";
 import type { CliOutcome } from "../../src/cli/types.js";
 

@@ -17,14 +17,14 @@ Module 8 (**Embedded HTTP and Remote Repositories**) defines the read-only netwo
 
 ### Completed Primitives (Baseline)
 The low-level network adapters and grammar primitives were implemented and unit-tested ahead of time:
-- [src/ports/http-server-port.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/ports/http-server-port.ts): Contract for binding and serving the immutable snapshot.
-- [src/adapters/node-http-server-adapter.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/adapters/node-http-server-adapter.ts): Built-in `node:http` server strictly binding `127.0.0.1`, matching path `/repository.json` before method, serving GET (200 + snapshot bytes), HEAD (200 + zero-byte body), 404 for query/other paths, and 405 with `Allow: GET, HEAD`.
-- [src/ports/http-client-port.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/ports/http-client-port.ts): Contract for single GET byte retrieval without redirects.
-- [src/adapters/node-http-client-adapter.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/adapters/node-http-client-adapter.ts): Built-in `node:http`/`node:https` client streaming raw response bytes.
-- [src/ports/signal-port.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/ports/signal-port.ts) & [src/adapters/node-signal-adapter.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/adapters/node-signal-adapter.ts): Scoped process `SIGINT`/`SIGTERM` subscription with idempotent listener cleanup.
-- [src/application/repository/source.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/application/repository/source.ts): `classifyRepositorySource` partitioning operands into local paths vs. remote `http://` / `https://` URLs.
-- [src/cli/grammar.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/cli/grammar.ts) & [src/cli/command-request.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/cli/command-request.ts): Grammar parsing for `--serve [port]` (with port validation 0–65535) producing `ServeRequest`.
-- [src/cli/results.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/cli/results.ts), [src/cli/render.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/cli/render.ts), & [src/cli/render-terminal.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/cli/render-terminal.ts): `serve-startup` result kind rendering as an uncolored plain URL in both plain and terminal modes.
+- [`src/ports/http-server-port.ts`](../ts/src/ports/http-server-port.ts): Contract for binding and serving the immutable snapshot.
+- [`src/adapters/node-http-server-adapter.ts`](../ts/src/adapters/node-http-server-adapter.ts): Built-in `node:http` server strictly binding `127.0.0.1`, matching path `/repository.json` before method, serving GET (200 + snapshot bytes), HEAD (200 + zero-byte body), 404 for query/other paths, and 405 with `Allow: GET, HEAD`.
+- [`src/ports/http-client-port.ts`](../ts/src/ports/http-client-port.ts): Contract for single GET byte retrieval without redirects.
+- [`src/adapters/node-http-client-adapter.ts`](../ts/src/adapters/node-http-client-adapter.ts): Built-in `node:http`/`node:https` client streaming raw response bytes.
+- [`src/ports/signal-port.ts`](../ts/src/ports/signal-port.ts) & [`src/adapters/node-signal-adapter.ts`](../ts/src/adapters/node-signal-adapter.ts): Scoped process `SIGINT`/`SIGTERM` subscription with idempotent listener cleanup.
+- [`src/application/repository/source.ts`](../ts/src/application/repository/source.ts): `classifyRepositorySource` partitioning operands into local paths vs. remote `http://` / `https://` URLs.
+- [`src/cli/grammar.ts`](../ts/src/cli/grammar.ts) & [`src/cli/command-request.ts`](../ts/src/cli/command-request.ts): Grammar parsing for `--serve [port]` (with port validation 0–65535) producing `ServeRequest`.
+- [`src/cli/results.ts`](../ts/src/cli/results.ts), [`src/cli/render.ts`](../ts/src/cli/render.ts), & [`src/cli/render-terminal.ts`](../ts/src/cli/render-terminal.ts): `serve-startup` result kind rendering as an uncolored plain URL in both plain and terminal modes.
 
 ### Public Acceptance Exit Gate
 - **Scenario 12** (`12-http-server.yaml`): Server startup preparation, immutable snapshot, GET/HEAD/POST/query behavior, post-startup commit immutability, SIGTERM/SIGINT shutdown, invalid startup repository failure.
@@ -63,7 +63,7 @@ The low-level network adapters and grammar primitives were implemented and unit-
      - Require exactly HTTP `200`.
      - Non-200 responses (e.g. `302`, `404`, `500`) must return a domain error whose detail includes `HTTP <status>` (e.g. `HTTP 302` or `HTTP 404`). This is explicitly asserted by scenario 13 (`stderr_contains: HTTP 302`).
   4. Handle transport/network errors (connection refused, DNS failure, reset) by returning a domain error (e.g. `domainError("io", ...)`).
-  5. Feed the raw response bytes (`Uint8Array`) into `decodeAndValidateRepositoryBytes(bytes)` from [src/application/repository/decode-repository.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/application/repository/decode-repository.ts).
+  5. Feed the raw response bytes (`Uint8Array`) into `decodeAndValidateRepositoryBytes(bytes)` from [`src/application/repository/decode-repository.ts`](../ts/src/application/repository/decode-repository.ts).
      - This automatically runs fatal UTF-8 decoding, duplicate-key JSON rejection, schema validation, and full M5 replay validation.
      - Malformed JSON reports `invalid JSON` (asserted by scenario 13).
      - Unknown fields (e.g. `"bad": true`) fail schema validation (asserted by scenario 26).
@@ -72,13 +72,13 @@ The low-level network adapters and grammar primitives were implemented and unit-
 #### 2. Upgrade Repository Source Adapter
 - **File**: `snap/ts/src/adapters/repository-source-adapter.ts` [REPLACE/EXPAND `local-repository-source-adapter.ts`]
 - **Responsibilities**:
-  1. Implement [RepositorySourcePort](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/ports/repository-source-port.ts) with dependencies `{ readonly fileSystem: FileSystemPort; readonly httpClient: HttpClientPort }`.
+  1. Implement [`RepositorySourcePort`](../ts/src/ports/repository-source-port.ts) with dependencies `{ readonly fileSystem: FileSystemPort; readonly httpClient: HttpClientPort }`.
   2. When `source.kind === "local"`, invoke `loadLocalOperand(cwd, source.path, { fileSystem })`.
   3. When `source.kind === "remote"`, invoke `loadRemoteRepository(source.url, { httpClient })`.
   4. Remove the temporary stub error (`remote repository loading is not yet implemented`).
 
 #### 3. Confirm Remote Merge & Diff Non-Mutation Safety
-- Verify that both [src/application/commands/merge.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/application/commands/merge.ts) and [src/application/commands/diff.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/application/commands/diff.ts) receive the validated repository via `ports.repositorySource.load(...)`.
+- Verify that both [`src/application/commands/merge.ts`](../ts/src/application/commands/merge.ts) and [`src/application/commands/diff.ts`](../ts/src/application/commands/diff.ts) receive the validated repository via `ports.repositorySource.load(...)`.
 - Confirm that in all remote failure paths (network error, HTTP 302, HTTP 404, malformed JSON, schema violation, dot collision), zero local files are touched, no temporary files remain, and `.snap/repository.json` is not updated (SPEC §10, scenario 26).
 
 ---
@@ -256,10 +256,10 @@ tsc -p tsconfig.test.json --noEmit false --outDir .m8-test-build && node --test 
 
 #### Update Ledger
 Once all exit gates pass:
-1. Update [snap/modules.md](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/modules.md):
+1. Update [`snap/modules.md`](../modules.md):
    - Mark Module 8 as `Complete` (or record host-specific blockers if any).
    - Document verification evidence and handoff to Module 9.
-2. Update [snap/module_plans/module8PROGRESS.md](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/module_plans/module8PROGRESS.md) to record final implementation notes.
+2. Update [`snap/module_plans/module8PROGRESS.md`](module8PROGRESS.md) to record final implementation notes.
 
 ---
 

@@ -9,8 +9,8 @@ import type { Change, Patch } from "./types.js";
 /**
  * SPEC §4.2: a patch's result is its base with `result[author] = revision`;
  * every other component is unchanged. The single implementation reused by
- * both `linear-history.ts` (replaying an existing chain) and `commit`
- * (computing the version to print after publishing a new patch).
+ * both M5 history replay and `commit` (computing the version to print after
+ * publishing a new patch).
  */
 // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- `Version`'s components are already readonly/frozen; the rule does not recognize the branded interface as deeply readonly.
 export function computePatchResult(base: Version, author: ContributorId | string, revision: number): Result<Version, DomainError> {

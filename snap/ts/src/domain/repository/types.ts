@@ -54,9 +54,3 @@ export interface ValidatedRepository {
   readonly document: RepositoryDocument;
   readonly [validatedRepositoryBrand]: true;
 }
-
-/** Internal constructor — only the complete validator may create this brand. */
-// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- RepositoryDocument is an immutable domain value.
-export function makeValidatedRepository(document: RepositoryDocument): ValidatedRepository {
-  return Object.freeze({ document }) as unknown as ValidatedRepository;
-}

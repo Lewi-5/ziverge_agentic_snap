@@ -2,14 +2,15 @@ import { domainError, type DomainError } from "../errors.js";
 import { err, ok, type Result } from "../result.js";
 import type { Version } from "../version/types.js";
 import { indexRepository } from "./index.js";
-import type { Patch, RepositoryDocument } from "./types.js";
+import type { Patch, ValidatedRepository } from "./types.js";
 
 function selectedRevision(version: Version, author: string): number {
   return version.components.find((component) => component.contributorId === author)?.revision ?? 0;
 }
 
 // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- repository and version are immutable domain values.
-export function selectKnownPatches(document: RepositoryDocument, version: Version): Result<readonly Patch[], DomainError> {
+export function selectKnownPatches(repository: ValidatedRepository, version: Version): Result<readonly Patch[], DomainError> {
+  const { document } = repository;
   const index = indexRepository(document);
   for (const component of version.components) {
     const maximum = index.maximumRevisionByAuthor.get(component.contributorId) ?? 0;

@@ -1,7 +1,7 @@
 import type { DomainError } from "../errors.js";
 import { err, ok, type Result } from "../result.js";
 import { selectKnownPatches } from "../repository/known-version.js";
-import type { RepositoryDocument } from "../repository/types.js";
+import type { ValidatedRepository } from "../repository/types.js";
 import type { FileTree } from "../tree/change.js";
 import { formatVersion } from "../version/format.js";
 import { EMPTY_VERSION, type Version } from "../version/types.js";
@@ -18,7 +18,7 @@ const EMPTY_MATERIALIZATION: MaterializedVersion = Object.freeze({ tree: new Map
 
 /* eslint-disable @typescript-eslint/prefer-readonly-parameter-types -- immutable domain inputs plus an invocation-local mutable cache. */
 function materializeWithCache(
-  document: RepositoryDocument,
+  repository: ValidatedRepository,
   version: Version,
   cache: Map<string, MaterializedVersion>,
 ): Result<MaterializedVersion, DomainError> {
@@ -26,7 +26,7 @@ function materializeWithCache(
   const cached = cache.get(key);
   if (cached !== undefined) return ok(cached);
 
-  const selected = selectKnownPatches(document, version);
+  const selected = selectKnownPatches(repository, version);
   if (!selected.ok) return selected;
   const scheduled = schedulePatches(selected.value);
   if (!scheduled.ok) return scheduled;
@@ -34,7 +34,7 @@ function materializeWithCache(
   let current: FileTree = EMPTY_MATERIALIZATION.tree;
   const warnings: WarningFact[] = [];
   for (const patch of scheduled.value) {
-    const exactBase = materializeWithCache(document, patch.base, cache);
+    const exactBase = materializeWithCache(repository, patch.base, cache);
     if (!exactBase.ok) return exactBase;
     const integrated = integratePatch(exactBase.value.tree, current, patch);
     if (!integrated.ok) return integrated;
@@ -50,9 +50,9 @@ function materializeWithCache(
 
 /** Materializes any known causal version from the empty tree. */
 // eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- document and version are immutable branded/domain values.
-export function materializeVersion(document: RepositoryDocument, version: Version): Result<MaterializedVersion, DomainError> {
+export function materializeVersion(repository: ValidatedRepository, version: Version): Result<MaterializedVersion, DomainError> {
   const cache = new Map<string, MaterializedVersion>([[formatVersion(EMPTY_VERSION), EMPTY_MATERIALIZATION]]);
-  const result = materializeWithCache(document, version, cache);
+  const result = materializeWithCache(repository, version, cache);
   if (!result.ok) return err(result.error);
   return result;
 }

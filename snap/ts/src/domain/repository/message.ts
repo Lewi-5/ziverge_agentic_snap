@@ -21,6 +21,15 @@ export function validateMessage(text: string, options?: { readonly maxBytes?: nu
     if (codePoint === 0x7f || (codePoint < 0x20 && codePoint !== 0x09 && codePoint !== 0x0a)) {
       return err(domainError("validation", `message must not contain an ASCII control character other than tab/LF: '${escapeControlCharacters(text)}'`));
     }
+    if (codePoint >= 0xd800 && codePoint <= 0xdbff) {
+      const next = text.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) {
+        return err(domainError("validation", "message contains an unpaired surrogate"));
+      }
+      index += 1;
+    } else if (codePoint >= 0xdc00 && codePoint <= 0xdfff) {
+      return err(domainError("validation", "message contains an unpaired surrogate"));
+    }
   }
   const maxBytes = options?.maxBytes;
   if (maxBytes !== undefined && encoder.encode(text).length > maxBytes) {

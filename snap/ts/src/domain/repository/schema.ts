@@ -12,9 +12,8 @@ import { validateMessage } from "./message.js";
 // Stage 2/3 decode result: exact schema + primitive validation only. A text
 // change's edit script is kept as raw JSON (`editJson`), not yet a validated
 // `EditScript` — validating that an edit script applies exactly requires the
-// patch's *materialized* base tree, which only `linear-history.ts` computes
-// while replaying (module3planCORRECTIONS.md #8). This type is therefore not
-// a validated repository; see `LinearRepository` in `types.ts`.
+// patch's *materialized* base tree, which the complete M5 validator computes
+// while replaying. This type is therefore not a `ValidatedRepository`.
 // ---------------------------------------------------------------------------
 
 export interface RawTextChange {
@@ -200,7 +199,7 @@ function decodePatch(value: unknown): Result<RawPatch, DomainError> {
  * SPEC §4.1 schema: unknown fields, wrong types, non-integer/unsafe numbers,
  * invalid ids/paths/messages/base64, and non-canonical version arrays are
  * all rejected here. Does not yet validate patch sorting, dot contiguity,
- * causal closure, or per-change base preconditions — see `linear-history.ts`.
+ * causal closure, or per-change base preconditions — see `validate.ts`.
  */
 export function decodeRepositoryDocument(value: unknown): Result<RawRepositoryDocument, DomainError> {
   if (!isPlainObject(value)) {

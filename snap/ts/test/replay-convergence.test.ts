@@ -4,7 +4,7 @@ import { materializeVersion } from "../src/domain/history/materialize.js";
 import { patchResult } from "../src/domain/history/patch-result.js";
 import { schedulePatches } from "../src/domain/history/ready-scheduler.js";
 import { decodeRepositoryDocument } from "../src/domain/repository/schema.js";
-import type { Patch, RepositoryDocument } from "../src/domain/repository/types.js";
+import type { Patch, RepositoryDocument, ValidatedRepository } from "../src/domain/repository/types.js";
 import { validateRepository } from "../src/domain/repository/validate.js";
 
 function editFor(seed: number, author: string): readonly Readonly<Record<string, unknown>>[] {
@@ -40,13 +40,17 @@ function shuffled<T>(values: readonly T[], seed: number): readonly T[] {
   return result;
 }
 
-function treeSnapshot(document: RepositoryDocument): readonly (readonly [string, readonly number[]])[] {
-  const result = materializeVersion(document, document.frontier);
+function assumeValidated(document: RepositoryDocument): ValidatedRepository {
+  return { document } as unknown as ValidatedRepository;
+}
+
+function treeSnapshot(repository: ValidatedRepository): readonly (readonly [string, readonly number[]])[] {
+  const result = materializeVersion(repository, repository.document.frontier);
   if (!result.ok) throw new Error(result.error.detail);
   return [...result.value.tree].map(([path, bytes]) => [path, [...bytes]] as const);
 }
 
-function validatedPatches(seed: number): RepositoryDocument {
+function validatedPatches(seed: number): ValidatedRepository {
   const authors = ["b@x", "c@x", "d@x"];
   const source = {
     format: 1,
@@ -69,18 +73,23 @@ function validatedPatches(seed: number): RepositoryDocument {
   if (!decoded.ok) throw new Error(decoded.error.detail);
   const validated = validateRepository(decoded.value);
   if (!validated.ok) throw new Error(validated.error.detail);
-  return validated.value.document;
+  return validated.value;
 }
 
 test("seeded causal text graphs converge across storage permutations", () => {
   for (let seed = 1; seed <= 24; seed += 1) {
-    const document = validatedPatches(seed);
-    const expectedTree = treeSnapshot(document);
-    const expectedOrder = schedulePatches(document.patches);
+    const repository = validatedPatches(seed);
+    const expectedTree = treeSnapshot(repository);
+    const expectedOrder = schedulePatches(repository.document.patches);
     assert.equal(expectedOrder.ok, true);
     for (let permutation = 0; permutation < 8; permutation += 1) {
-      const permuted: RepositoryDocument = { ...document, patches: shuffled(document.patches, seed * 31 + permutation) };
-      assert.deepEqual(treeSnapshot(permuted), expectedTree);
+      const permuted: RepositoryDocument = {
+        ...repository.document,
+        patches: shuffled(repository.document.patches, seed * 31 + permutation),
+      };
+      // White-box property test: deliberately bypass canonical storage-order
+      // validation to prove replay itself is permutation-independent.
+      assert.deepEqual(treeSnapshot(assumeValidated(permuted)), expectedTree);
       const order = schedulePatches(permuted.patches);
       assert.equal(order.ok, true);
       if (order.ok && expectedOrder.ok) {
@@ -94,23 +103,23 @@ test("seeded causal text graphs converge across storage permutations", () => {
 });
 
 test("every patch result materializes its complete causal closure", () => {
-  const document = validatedPatches(17);
-  for (const patch of document.patches) {
+  const repository = validatedPatches(17);
+  for (const patch of repository.document.patches) {
     const resultVersion = patchResult(patch);
     assert.equal(resultVersion.ok, true);
     if (!resultVersion.ok) continue;
-    const result = materializeVersion(document, resultVersion.value);
+    const result = materializeVersion(repository, resultVersion.value);
     assert.equal(result.ok, true);
     if (result.ok && patch.author !== "a@x") assert.equal(result.value.tree.has("f"), true);
   }
 });
 
 test("typed patch inputs are not mutated by scheduling or materialization", () => {
-  const document = validatedPatches(9);
-  const before = JSON.stringify(document.patches);
-  schedulePatches(document.patches);
-  materializeVersion(document, document.frontier);
-  assert.equal(JSON.stringify(document.patches), before);
+  const repository = validatedPatches(9);
+  const before = JSON.stringify(repository.document.patches);
+  schedulePatches(repository.document.patches);
+  materializeVersion(repository, repository.document.frontier);
+  assert.equal(JSON.stringify(repository.document.patches), before);
 });
 
 function patchIdentity(patch: Patch): string {
@@ -118,6 +127,6 @@ function patchIdentity(patch: Patch): string {
 }
 
 test("seed corpus exercises all generated concurrent patch identities", () => {
-  const document = validatedPatches(3);
-  assert.deepEqual(document.patches.map(patchIdentity), ["a@x:1", "b@x:1", "c@x:1", "d@x:1"]);
+  const repository = validatedPatches(3);
+  assert.deepEqual(repository.document.patches.map(patchIdentity), ["a@x:1", "b@x:1", "c@x:1", "d@x:1"]);
 });

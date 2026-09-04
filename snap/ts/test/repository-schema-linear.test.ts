@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { decodeRepositoryDocument } from "../src/domain/repository/schema.js";
-import { validateLinearRepository } from "../src/domain/repository/linear-history.js";
 import { serializeRepositoryDocument } from "../src/domain/repository/serialize.js";
+import { validateRepository } from "../src/domain/repository/validate.js";
 import { encodeBase64 } from "../src/domain/content/base64.js";
 
 function decodeAndValidate(value: unknown) {
@@ -10,7 +10,7 @@ function decodeAndValidate(value: unknown) {
   if (!decoded.ok) {
     return decoded;
   }
-  return validateLinearRepository(decoded.value);
+  return validateRepository(decoded.value);
 }
 
 test("decodes and validates the empty repository", () => {

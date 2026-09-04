@@ -16,7 +16,11 @@ test("insert/delete tie chooses deletion at the first differing cursor", () => {
 test("canonical edge-case goldens", () => {
   assert.deepEqual(canonicalDiff([], []), []);
   assert.deepEqual(canonicalDiff([], ["x"]), [{ insert: ["x"] }]);
+  assert.deepEqual(canonicalDiff([], ["x\n", "y\n", "z\n"]), [{ insert: ["x\n", "y\n", "z\n"] }]);
   assert.deepEqual(canonicalDiff(["x"], []), [{ delete: 1 }]);
+  assert.deepEqual(canonicalDiff(["x\n", "y\n", "z\n"], []), [{ delete: 3 }]);
+  assert.deepEqual(canonicalDiff(["a\n"], ["a\n", "b\n", "c\n"]), [{ retain: 1 }, { insert: ["b\n", "c\n"] }]);
+  assert.deepEqual(canonicalDiff(["a\n", "b\n", "c\n"], ["a\n"]), [{ retain: 1 }, { delete: 2 }]);
   assert.deepEqual(canonicalDiff(["a\r\n", "é"], ["a\r\n", "😀"]), [{ retain: 1 }, { delete: 1 }, { insert: ["😀"] }]);
   assert.deepEqual(canonicalDiff(["x\n", "x\n"], ["x\n", "x\n"]), [{ retain: 2 }]);
 });

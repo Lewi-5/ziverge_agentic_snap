@@ -42,11 +42,16 @@ test("classification copies bytes and exposes an immutable byte sequence", () =>
   assert.equal(Object.isFrozen(content.bytes), true);
 });
 
-test("token validation enforces canonical boundaries and Unicode scalar values", () => {
+test("token validation enforces canonical boundaries, Unicode scalar values, and rejects NUL bytes", () => {
   assert.equal(validateTokenSequence(["a\n", "b"]).ok, true);
   assert.equal(validateTokenSequence([]).ok, true);
-  for (const value of [[""], ["a", "b"], ["a\nb"], ["\ud800"], "a\n"]) {
-    assert.equal(validateTokenSequence(value).ok, false);
+  for (const value of [[""], ["a", "b"], ["a\nb"], ["\ud800"], "a\n", ["hello\0\n"], ["\0"], ["a\n", "b\0c\n"]]) {
+    assert.equal(validateTokenSequence(value).ok, false, JSON.stringify(value));
+  }
+  const nulResult = validateTokenSequence(["hello\0world\n"]);
+  assert.equal(nulResult.ok, false);
+  if (!nulResult.ok) {
+    assert.match(nulResult.error.detail, /contains NUL byte/);
   }
 });
 

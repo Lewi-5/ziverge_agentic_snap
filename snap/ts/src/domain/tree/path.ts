@@ -24,6 +24,15 @@ export function createTrackedPath(text: string): Result<TrackedPath, DomainError
     if (codePoint < 0x20 || codePoint === 0x7f) {
       return err(domainError("validation", `tracked path must not contain an ASCII control character: '${escapeControlCharacters(text)}'`));
     }
+    if (codePoint >= 0xd800 && codePoint <= 0xdbff) {
+      const next = text.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) {
+        return err(domainError("validation", `tracked path contains an unpaired surrogate: '${escapeControlCharacters(text)}'`));
+      }
+      index += 1;
+    } else if (codePoint >= 0xdc00 && codePoint <= 0xdfff) {
+      return err(domainError("validation", `tracked path contains an unpaired surrogate: '${escapeControlCharacters(text)}'`));
+    }
   }
 
   const segments = text.split("/");

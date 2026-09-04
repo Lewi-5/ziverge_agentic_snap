@@ -38,12 +38,15 @@ export function constructEdit(value: unknown, base: readonly TextToken[] | null)
       operation = Object.freeze({ delete: object["delete"] as number });
     } else if (exactKeys(object, "insert")) {
       const tokens = validateTokenSequence(object["insert"]);
-      if (!tokens.ok || tokens.value.length === 0) {
-        return err(domainError("validation", `edit insert ${String(index)} must contain canonical nonempty tokens`));
+      if (!tokens.ok) {
+        return err(domainError("validation", `edit insert ${String(index)}: ${tokens.error.detail}`));
+      }
+      if (tokens.value.length === 0) {
+        return err(domainError("validation", `edit insert ${String(index)}: insert is empty`));
       }
       operation = Object.freeze({ insert: tokens.value });
     } else {
-      return err(domainError("validation", `edit operation ${String(index)} must have exactly one valid key`));
+      return err(domainError("validation", `edit operation ${String(index)} must have one operation`));
     }
     const kind = operationKind(operation);
     if (kind === previousKind) return err(domainError("validation", `adjacent ${kind} operations are forbidden`));

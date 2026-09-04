@@ -36,7 +36,10 @@ export function createNodeWorkingTreeAdapter(fileSystem: FileSystemPort): Workin
         }
       } else if (kind === "file") {
         const bytes = await fileSystem.readFileIfExists(absolutePath);
-        entries.push([relativePath, bytes ?? new Uint8Array()]);
+        if (bytes === null) {
+          return domainError("validation", `unsupported working tree entry: ${relativePath}`);
+        }
+        entries.push([relativePath, bytes]);
       } else {
         // symlink, other, or a missing entry lost to a race: reject, do not follow.
         return domainError("validation", `unsupported working tree entry: ${relativePath}`);

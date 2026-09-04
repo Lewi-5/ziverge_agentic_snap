@@ -15,9 +15,19 @@ import { formatVersion } from "../version/format.js";
 import { EMPTY_VERSION, type Version } from "../version/types.js";
 import { dotKey } from "./index.js";
 import type { RawPatch, RawRepositoryDocument } from "./schema.js";
-import { makeValidatedRepository, type Change, type Patch, type RepositoryDocument, type ValidatedRepository } from "./types.js";
+import type { Change, Patch, RepositoryDocument, ValidatedRepository } from "./types.js";
 
 const textEncoder = new TextEncoder();
+
+/**
+ * Creates the validation pipeline's private replay capability. This is kept
+ * here, rather than exported from `types.ts`, so callers cannot bless an
+ * arbitrary `RepositoryDocument` as fully validated.
+ */
+// eslint-disable-next-line @typescript-eslint/prefer-readonly-parameter-types -- RepositoryDocument is an immutable domain value.
+function validationCandidate(document: RepositoryDocument): ValidatedRepository {
+  return Object.freeze({ document }) as unknown as ValidatedRepository;
+}
 
 function baseRevision(base: Version, author: string): number {
   return base.components.find((component) => component.contributorId === author)?.revision ?? 0;
@@ -141,7 +151,7 @@ export function validateRepository(raw: RawRepositoryDocument): Result<Validated
     });
     let exactBase: FileTree = new Map();
     if (formatVersion(rawPatch.base) !== formatVersion(EMPTY_VERSION)) {
-      const materialized = materializeVersion(partial, rawPatch.base);
+      const materialized = materializeVersion(validationCandidate(partial), rawPatch.base);
       if (!materialized.ok) return materialized;
       exactBase = materialized.value.tree;
     }
@@ -165,7 +175,8 @@ export function validateRepository(raw: RawRepositoryDocument): Result<Validated
     typedPatches.push(typed);
   }
   const document: RepositoryDocument = Object.freeze({ format: 1, frontier: raw.frontier, patches: Object.freeze(typedPatches) });
-  const replayed = materializeVersion(document, document.frontier);
+  const repository = validationCandidate(document);
+  const replayed = materializeVersion(repository, document.frontier);
   if (!replayed.ok) return replayed;
-  return ok(makeValidatedRepository(document));
+  return ok(repository);
 }

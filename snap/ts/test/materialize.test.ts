@@ -27,6 +27,17 @@ function decode(tree: ReadonlyMap<string, Uint8Array>, path: string): string | u
   return bytes === undefined ? undefined : new TextDecoder().decode(bytes);
 }
 
+function assertValidatedBoundary(document: RepositoryDocument, target: Version): void {
+  // These calls intentionally remain compile-time failures. M3's staged
+  // boundary required callers to prove validation before using repository
+  // history, and M5 must preserve that guarantee for arbitrary DAG replay.
+  // @ts-expect-error A decoded/constructed document is not a ValidatedRepository.
+  materializeVersion(document, target);
+  // @ts-expect-error Known-version selection also requires the validated brand.
+  selectKnownPatches(document, target);
+}
+void assertValidatedBoundary;
+
 const threeEditors = {
   format: 1,
   frontier: [["a@x", 1], ["b@x", 1], ["c@x", 1]],
@@ -39,7 +50,7 @@ const threeEditors = {
 
 test("materialization performs aggregate-context OT for three concurrent text patches", () => {
   const validated = repository(threeEditors);
-  const result = materializeVersion(validated.document, validated.document.frontier);
+  const result = materializeVersion(validated, validated.document.frontier);
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.equal(decode(result.value.tree, "f"), "c\nb\nbase\n");
@@ -58,10 +69,10 @@ test("known versions include causal joins that are not patch result versions", (
     ],
   });
   const joined = version("(a@x->1,b@x->1)");
-  const selected = selectKnownPatches(validated.document, joined);
+  const selected = selectKnownPatches(validated, joined);
   assert.equal(selected.ok, true);
   if (selected.ok) assert.deepEqual(selected.value.map((patch) => `${patch.author}:${String(patch.revision)}`), ["a@x:1", "b@x:1"]);
-  const materialized = materializeVersion(validated.document, joined);
+  const materialized = materializeVersion(validated, joined);
   assert.equal(materialized.ok, true);
   if (materialized.ok) assert.deepEqual([...materialized.value.tree.keys()].sort(), ["a", "b"]);
 });
@@ -75,14 +86,14 @@ test("known-version selection rejects excessive counters and omitted closure", (
       { author: "b@x", revision: 1, base: [["a@x", 1]], message: "b", changes: [{ type: "text", path: "b", edit: [] }] },
     ],
   });
-  assert.equal(selectKnownPatches(validated.document, version("(a@x->2,b@x->1)")).ok, false);
-  assert.equal(selectKnownPatches(validated.document, version("(b@x->1)")).ok, false);
-  assert.equal(selectKnownPatches(validated.document, version("()")).ok, true);
+  assert.equal(selectKnownPatches(validated, version("(a@x->2,b@x->1)")).ok, false);
+  assert.equal(selectKnownPatches(validated, version("(b@x->1)")).ok, false);
+  assert.equal(selectKnownPatches(validated, version("()")).ok, true);
 });
 
 test("replay is independent of in-memory patch storage order", () => {
   const validated = repository(threeEditors);
-  const expected = materializeVersion(validated.document, validated.document.frontier);
+  const expected = materializeVersion(validated, validated.document.frontier);
   assert.equal(expected.ok, true);
   const permutations = [
     [...validated.document.patches].reverse(),
@@ -90,7 +101,11 @@ test("replay is independent of in-memory patch storage order", () => {
   ];
   for (const patches of permutations) {
     const document: RepositoryDocument = { ...validated.document, patches: patches.filter((patch) => patch !== undefined) };
-    const actual = materializeVersion(document, document.frontier);
+    // Deliberately bypass the public brand only in this white-box property
+    // test: replay must not depend on storage order even though the schema
+    // boundary requires canonical storage order.
+    const permuted = { document } as unknown as ValidatedRepository;
+    const actual = materializeVersion(permuted, document.frontier);
     assert.equal(actual.ok, true);
     if (expected.ok && actual.ok) {
       assert.equal(decode(actual.value.tree, "f"), decode(expected.value.tree, "f"));
@@ -111,7 +126,7 @@ test("namespace replay is simultaneous and produces sorted warning facts", () =>
       ] },
     ],
   });
-  const result = materializeVersion(validated.document, validated.document.frontier);
+  const result = materializeVersion(validated, validated.document.frontier);
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.deepEqual([...result.value.tree.keys()], ["a"]);

@@ -21,7 +21,7 @@ export async function diffWorkingTree(cwd: string, ports: DiffPorts): Promise<Re
   if (!loaded.ok) {
     return loaded;
   }
-  const current = materializeVersion(loaded.value.repository.document, loaded.value.repository.document.frontier);
+  const current = materializeVersion(loaded.value.repository, loaded.value.repository.document.frontier);
   if (!current.ok) return current;
   const working = await readWorkingTree(loaded.value.repoRoot, ports);
   if (!working.ok) {
@@ -51,11 +51,11 @@ export async function diffVersions(
     return err(domainError("validation", `invalid version: ${newVersion.error.detail}`));
   }
 
-  const oldTree = materializeVersion(loaded.value.repository.document, oldVersion.value);
+  const oldTree = materializeVersion(loaded.value.repository, oldVersion.value);
   if (!oldTree.ok) {
     return err(domainError("validation", `unknown version: ${oldVersionText}`));
   }
-  const newTree = materializeVersion(loaded.value.repository.document, newVersion.value);
+  const newTree = materializeVersion(loaded.value.repository, newVersion.value);
   if (!newTree.ok) {
     return err(domainError("validation", `unknown version: ${newVersionText}`));
   }

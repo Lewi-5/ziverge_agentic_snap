@@ -34,6 +34,9 @@ export function validateTokenSequence(value: unknown): Result<readonly TextToken
     }
     for (let offset = 0; offset < token.length; offset += 1) {
       const unit = token.charCodeAt(offset);
+      if (unit === 0) {
+        return err(domainError("validation", `text token ${String(index)} contains NUL byte`));
+      }
       if (unit >= 0xd800 && unit <= 0xdbff) {
         const next = token.charCodeAt(offset + 1);
         if (!(next >= 0xdc00 && next <= 0xdfff)) {

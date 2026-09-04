@@ -66,7 +66,7 @@ export async function commit(input: CommitInput, ports: CommitPorts): Promise<Re
   }
 
   const frontier = loaded.value.repository.document.frontier;
-  const current = materializeVersion(loaded.value.repository.document, frontier);
+  const current = materializeVersion(loaded.value.repository, frontier);
   if (!current.ok) return current;
 
   const working = await readWorkingTree(loaded.value.repoRoot, ports);

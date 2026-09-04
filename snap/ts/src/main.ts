@@ -1,6 +1,7 @@
 import { createNodeEnvironmentAdapter } from "./adapters/node-environment-adapter.js";
 import { createNodeFileSystemAdapter } from "./adapters/node-filesystem-adapter.js";
 import { createNodeRepositoryDiscoveryAdapter } from "./adapters/node-repository-discovery-adapter.js";
+import { createNodeTerminalAdapter } from "./adapters/node-terminal-adapter.js";
 import { createNodeWorkingTreeAdapter } from "./adapters/node-working-tree-adapter.js";
 import { runCli } from "./cli/dispatch.js";
 
@@ -9,11 +10,12 @@ async function main(): Promise<void> {
   const repositoryDiscovery = createNodeRepositoryDiscoveryAdapter(fileSystem);
   const environment = createNodeEnvironmentAdapter();
   const workingTree = createNodeWorkingTreeAdapter(fileSystem);
+  const terminal = createNodeTerminalAdapter();
 
   const outcome = await runCli({
     argv: process.argv.slice(2),
     cwd: process.cwd(),
-    ports: { fileSystem, repositoryDiscovery, environment, workingTree },
+    ports: { fileSystem, repositoryDiscovery, environment, workingTree, terminal },
   });
 
   if (outcome.stdout.length > 0) {

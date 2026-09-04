@@ -44,6 +44,26 @@ async function ensureParents(repositoryRoot: string, trackedPath: string): Promi
   }
 }
 
+/**
+ * SPEC.md §2: "Directories are implicit; empty directories are not tracked."
+ * A directory sitting at a write target (however deeply nested its own empty
+ * subdirectories go) is therefore never a tracked working-tree entry in its
+ * own right and must not block writing a file there, as long as it contains
+ * no actual file anywhere beneath it. A non-empty directory is checked for
+ * defensively: the calling command's dirty-tree gate should already refuse
+ * before materialization is ever reached, so finding real content here
+ * signals something unexpected rather than a normal transition.
+ */
+async function isEmptyDirectoryTree(target: string): Promise<boolean> {
+  const names = await fs.readdir(target);
+  for (const name of names) {
+    const child = path.join(target, name);
+    if (await kind(child) !== "directory") return false;
+    if (!(await isEmptyDirectoryTree(child))) return false;
+  }
+  return true;
+}
+
 async function pruneParents(repositoryRoot: string, trackedPaths: readonly string[]): Promise<void> {
   const root = path.resolve(repositoryRoot);
   const candidates = new Set<string>();
@@ -83,8 +103,14 @@ export function createNodeTreeMaterializationAdapter(): TreeMaterializationPort 
         await ensureParents(repositoryRoot, write.path);
         const target = nativePath(repositoryRoot, write.path);
         const targetKind = await kind(target);
-        if (targetKind === "directory" || targetKind === "unsupported") {
+        if (targetKind === "unsupported") {
           throw new Error(`unsupported working tree entry: ${write.path}`);
+        }
+        if (targetKind === "directory") {
+          if (!(await isEmptyDirectoryTree(target))) {
+            throw new Error(`unsupported working tree entry: ${write.path}`);
+          }
+          await fs.rm(target, { recursive: true });
         }
         await fs.writeFile(target, write.bytes);
       }

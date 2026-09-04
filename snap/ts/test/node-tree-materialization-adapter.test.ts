@@ -81,6 +81,59 @@ test("materialization adapter: handles file-to-directory and directory-to-file t
   });
 });
 
+test("materialization adapter: writes a file over a pre-existing empty directory at the same path (SPEC.md §2: empty directories are not tracked)", async () => {
+  await withTempDir(async (root) => {
+    // This directory was never populated by Snap (e.g. a stray `mkdir`, or
+    // left behind by some other tool) and is unrelated to any planned
+    // removal, so it is not part of `plan.removals`.
+    await fs.mkdir(path.join(root, "docs"));
+
+    const adapter = createNodeTreeMaterializationAdapter();
+    await adapter.apply(root, {
+      removals: [],
+      writes: [{ path: "docs", bytes: new Uint8Array([1, 2, 3]) }],
+    });
+
+    const written = await fs.readFile(path.join(root, "docs"));
+    assert.deepEqual([...written], [1, 2, 3]);
+  });
+});
+
+test("materialization adapter: writes a file over a pre-existing chain of nested empty directories", async () => {
+  await withTempDir(async (root) => {
+    await fs.mkdir(path.join(root, "docs/empty/chain"), { recursive: true });
+
+    const adapter = createNodeTreeMaterializationAdapter();
+    await adapter.apply(root, {
+      removals: [],
+      writes: [{ path: "docs", bytes: new Uint8Array([9]) }],
+    });
+
+    const written = await fs.readFile(path.join(root, "docs"));
+    assert.deepEqual([...written], [9]);
+  });
+});
+
+test("materialization adapter: still refuses to write over a directory that actually contains a file", async () => {
+  await withTempDir(async (root) => {
+    // A genuinely non-empty directory at the write target should never
+    // occur when the working tree is clean (any tracked descendant would
+    // already be scheduled for removal, and any untracked file would have
+    // made the tree dirty before materialization was ever reached), but the
+    // adapter must not silently discard unexpected content if it does.
+    await fs.mkdir(path.join(root, "docs"));
+    await fs.writeFile(path.join(root, "docs/stray.txt"), "stray", "utf8");
+
+    const adapter = createNodeTreeMaterializationAdapter();
+    await assert.rejects(
+      adapter.apply(root, { removals: [], writes: [{ path: "docs", bytes: new Uint8Array([1]) }] }),
+      /unsupported working tree entry: docs/,
+    );
+    // The stray file must survive untouched.
+    assert.equal(await fs.readFile(path.join(root, "docs/stray.txt"), "utf8"), "stray");
+  });
+});
+
 test("materialization adapter: refuses to write or remove Snap metadata (.snap)", async () => {
   await withTempDir(async (root) => {
     const adapter = createNodeTreeMaterializationAdapter();

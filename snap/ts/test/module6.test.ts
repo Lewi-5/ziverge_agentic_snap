@@ -432,6 +432,38 @@ test("merge namespace conflicts correctly materializes files and directories acr
   }
 });
 
+test("merge writes a file over a pre-existing empty directory left in the working tree (SPEC.md §2: empty directories are not tracked)", async () => {
+  const cli = await createRealCli();
+  try {
+    const local = path.join(cli.root, "local");
+    const remote = path.join(cli.root, "remote");
+
+    assert.equal((await cli.run(["init", "local"])).exitCode, 0);
+    assert.equal((await cli.run(["init", "remote"])).exitCode, 0);
+    assert.equal((await cli.run(["config", "contributor.id", "alice@x"], local)).exitCode, 0);
+    assert.equal((await cli.run(["config", "contributor.id", "bob@x"], remote)).exitCode, 0);
+
+    await cli.writeFile("remote/docs", "remote content\n");
+    assert.equal((await cli.run(["commit", "remote"], remote)).exitCode, 0);
+
+    // `local` never tracked anything at "docs" -- this empty directory was
+    // created out of band (e.g. by another tool) and, per SPEC.md §2, is not
+    // a tracked working-tree entry, so it must not make the tree dirty and
+    // must not block a merge from writing a file there.
+    await fs.mkdir(path.join(local, "docs"));
+    const status = await cli.run(["status"], local);
+    assert.equal(status.exitCode, 0);
+    assert.equal(status.stdout, "version ()\n");
+
+    const merged = await cli.run(["merge", remote], local);
+    assert.equal(merged.exitCode, 0);
+    assert.equal(merged.stderr, "");
+    assert.equal(await cli.readFile("local/docs"), "remote content\n");
+  } finally {
+    await cli.cleanup();
+  }
+});
+
 test("cross-repository diff reports unknown versions and handles equal trees", async () => {
   const cli = await createRealCli();
   try {

@@ -266,3 +266,177 @@ test("three-way union is associative and preserves nonempty warning facts", () =
     }
   }
 });
+
+/**
+ * The associativity test above only ever exercises SPEC §6.4 rule 4
+ * (`later-create-wins`), because `atomicHistory` builds three independent
+ * concurrent creates from an absent base. That leaves associativity
+ * unverified for the other four path-level winner rules. Each fixture below
+ * pins a *different* rule via a real three-repository union: a shared
+ * ancestor patch plus two concurrent branches that must resolve through that
+ * specific rule, unioned with a third, unrelated repository so every
+ * fixture is a genuine three-operand union rather than a two-way conflict
+ * with a bystander.
+ */
+
+function textRoot(author: string, path: string, line: string): Readonly<Record<string, unknown>> {
+  return Object.freeze({
+    author,
+    revision: 1,
+    base: [],
+    message: "root",
+    changes: [{ type: "text", path, edit: [{ insert: [`${line}\n`] }] }],
+  });
+}
+
+function singleRepo(patches: readonly Readonly<Record<string, unknown>>[]): RepositoryDocument {
+  const patchList = patches as readonly { readonly author: string; readonly revision: number }[];
+  const frontier = sortedFrontier(patchList.map((patch): [string, number] => [patch.author, patch.revision]));
+  return decodeValidated({ format: 1, frontier, patches: sortedPatchInputs(patchList) }).document;
+}
+
+/** An unrelated, conflict-free third operand, so every fixture below is a genuine 3-way union. */
+function bystanderHistory(seed: number): RepositoryDocument {
+  return singleRepo([
+    { author: "bystander@x", revision: 1, base: [], message: "bystander", changes: [{ type: "text", path: `bystander-${String(seed)}.txt`, edit: [{ insert: [`b-${String(seed)}\n`] }] }] },
+  ]);
+}
+
+/** Rule 2/3 (`delete-wins`): a concurrent delete beats a concurrent edit of the same shared-ancestor path. */
+function deleteWinsFixtures(seed: number): { readonly a: RepositoryDocument; readonly b: RepositoryDocument; readonly c: RepositoryDocument } {
+  const root = textRoot(`root${String(seed)}@x`, "shared.txt", "hello");
+  const rootAuthor = (root as { author: string }).author;
+  const a = singleRepo([root]);
+  const b = singleRepo([root, {
+    author: `d${String(seed)}@x`,
+    revision: 1,
+    base: [[rootAuthor, 1]],
+    message: "delete",
+    changes: [{ type: "delete", path: "shared.txt" }],
+  }]);
+  const c = singleRepo([root, {
+    author: `e${String(seed)}@x`,
+    revision: 1,
+    base: [[rootAuthor, 1]],
+    message: "edit",
+    changes: [{ type: "text", path: "shared.txt", edit: [{ retain: 1 }, { insert: [`more-${String(seed)}\n`] }] }],
+  }]);
+  return { a, b, c };
+}
+
+/** Rule 5 (`later-put-wins`): a canonically later `put` beats a canonically earlier concurrent edit. */
+function laterPutWinsFixtures(seed: number): { readonly a: RepositoryDocument; readonly b: RepositoryDocument; readonly c: RepositoryDocument } {
+  const root = textRoot(`root${String(seed)}@x`, "putconflict.txt", "hello");
+  const rootAuthor = (root as { author: string }).author;
+  const a = singleRepo([root]);
+  const b = singleRepo([root, {
+    author: `e${String(seed)}@x`,
+    revision: 1,
+    base: [[rootAuthor, 1]],
+    message: "edit",
+    changes: [{ type: "text", path: "putconflict.txt", edit: [{ retain: 1 }, { insert: [`more-${String(seed)}\n`] }] }],
+  }]);
+  const c = singleRepo([root, {
+    author: `aa${String(seed)}@x`,
+    revision: 1,
+    base: [[rootAuthor, 1]],
+    message: "put",
+    changes: [{ type: "put", path: "putconflict.txt", content: Buffer.from([0, 1, seed % 256]).toString("base64") }],
+  }]);
+  return { a, b, c };
+}
+
+/** Rule 6 (`put-wins`): incompatible non-text current content beats a concurrent text edit of the same path. */
+function putWinsFixtures(seed: number): { readonly a: RepositoryDocument; readonly b: RepositoryDocument; readonly c: RepositoryDocument } {
+  const root = textRoot(`root${String(seed)}@x`, "typed.txt", "hello");
+  const rootAuthor = (root as { author: string }).author;
+  const a = singleRepo([root]);
+  const b = singleRepo([root, {
+    author: `e${String(seed)}@x`,
+    revision: 1,
+    base: [[rootAuthor, 1]],
+    message: "edit",
+    changes: [{ type: "text", path: "typed.txt", edit: [{ retain: 1 }, { insert: [`more-${String(seed)}\n`] }] }],
+  }]);
+  const c = singleRepo([root, {
+    author: `z${String(seed)}@x`,
+    revision: 1,
+    base: [[rootAuthor, 1]],
+    message: "put",
+    changes: [{ type: "put", path: "typed.txt", content: Buffer.from([0, 2, seed % 256]).toString("base64") }],
+  }]);
+  return { a, b, c };
+}
+
+/** SPEC §6.2 namespace rule (`namespace-wins`): a file and a descendant path under it collide. */
+function namespaceWinsFixtures(seed: number): { readonly a: RepositoryDocument; readonly b: RepositoryDocument; readonly c: RepositoryDocument } {
+  const a = singleRepo([{
+    author: `na${String(seed)}@x`,
+    revision: 1,
+    base: [],
+    message: "ancestor",
+    changes: [{ type: "put", path: "ns", content: Buffer.from(`f-${String(seed)}`).toString("base64") }],
+  }]);
+  const b = singleRepo([{
+    author: `nb${String(seed)}@x`,
+    revision: 1,
+    base: [],
+    message: "descendant",
+    changes: [{ type: "put", path: "ns/child", content: Buffer.from(`g-${String(seed)}`).toString("base64") }],
+  }]);
+  const c = bystanderHistory(seed);
+  return { a, b, c };
+}
+
+const WARNING_RULE_FIXTURES: readonly {
+  readonly name: string;
+  readonly reason: string;
+  readonly build: (seed: number) => { readonly a: RepositoryDocument; readonly b: RepositoryDocument; readonly c: RepositoryDocument };
+}[] = [
+  { name: "delete-wins", reason: "delete-wins", build: deleteWinsFixtures },
+  { name: "later-put-wins", reason: "later-put-wins", build: laterPutWinsFixtures },
+  { name: "put-wins", reason: "put-wins", build: putWinsFixtures },
+  { name: "namespace-wins", reason: "namespace-wins", build: namespaceWinsFixtures },
+];
+
+for (const { name, reason, build } of WARNING_RULE_FIXTURES) {
+  test(`three-way union is associative and commutative for a real ${name} conflict`, () => {
+    for (const seed of SEEDS) {
+      const { a, b, c } = build(seed);
+
+      // All 6 orderings of pairwise association across 3 operands: this
+      // covers both associativity (where the parentheses go) and
+      // commutativity (which operand is unioned with which first) at once,
+      // rather than just the two groupings the original test checked.
+      const groupings: readonly RepositoryDocument[] = [
+        unionOf(unionOf(a, b), c),
+        unionOf(a, unionOf(b, c)),
+        unionOf(unionOf(b, a), c),
+        unionOf(b, unionOf(a, c)),
+        unionOf(unionOf(c, a), b),
+        unionOf(c, unionOf(a, b)),
+      ];
+
+      try {
+        const snapshots = groupings.map(snapshot);
+        const [expected, ...rest] = snapshots;
+        if (expected === undefined) throw new Error("no groupings produced");
+        for (const actual of rest) assert.deepEqual(actual, expected);
+
+        assert.ok(
+          expected.warnings.some((warning) => warning[1] === reason),
+          `fixture must exercise a real ${reason} warning, got ${JSON.stringify(expected.warnings)}`,
+        );
+
+        const shuffledSnapshot = snapshot(
+          unionOf(withShuffledPatches(a, seed * 61), unionOf(withShuffledPatches(b, seed * 67), withShuffledPatches(c, seed * 71))),
+        );
+        assert.deepEqual(shuffledSnapshot, expected);
+      } catch (error) {
+        throw new Error(
+          `seed=${String(seed)}\na=${JSON.stringify(a.patches)}\nb=${JSON.stringify(b.patches)}\nc=${JSON.stringify(c.patches)}\n${(error as Error).message}`,
+        );
+      }
+    }
+  });
+}

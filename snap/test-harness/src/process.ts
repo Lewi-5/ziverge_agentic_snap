@@ -17,6 +17,7 @@ export interface ManagedProcess {
   child: ChildProcess;
   completion: Promise<ProcessResult>;
   output: OutputCollector;
+  settle: (result: ProcessResult) => void;
 }
 
 export function deterministicEnvironment(root: string, changes?: Environment): NodeJS.ProcessEnv {
@@ -46,7 +47,7 @@ export async function runProcess(options: ProcessOptions): Promise<ProcessResult
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
-    killGroup(managed.child, "SIGKILL");
+    if (killGroup(managed.child, "SIGKILL")) settleAsKilled(managed);
   }, options.timeoutMs);
   try {
     const result = await managed.completion;
@@ -88,7 +89,7 @@ export async function startProcess(
         }
       };
       const timer = setTimeout(() => {
-        killGroup(managed.child, "SIGKILL");
+        if (killGroup(managed.child, "SIGKILL")) settleAsKilled(managed);
         finish(new Error(`background process did not become ready within ${timeoutMs}ms`));
       }, timeoutMs);
       managed.output.changed.add(check);
@@ -110,14 +111,14 @@ export async function stopProcess(
   signal: NodeJS.Signals,
   timeoutMs: number,
 ): Promise<ProcessResult> {
-  killGroup(managed.child, signal);
+  if (killGroup(managed.child, signal)) settleAsKilled(managed);
   let timer: NodeJS.Timeout | undefined;
   try {
     return await Promise.race([
       managed.completion,
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
-          killGroup(managed.child, "SIGKILL");
+          if (killGroup(managed.child, "SIGKILL")) settleAsKilled(managed);
           reject(new Error(`background process did not stop within ${timeoutMs}ms`));
         }, timeoutMs);
       }),
@@ -129,8 +130,25 @@ export async function stopProcess(
 
 export function cleanupProcess(managed: ManagedProcess): void {
   if (managed.child.exitCode === null && managed.child.signalCode === null) {
-    killGroup(managed.child, "SIGKILL");
+    if (killGroup(managed.child, "SIGKILL")) settleAsKilled(managed);
   }
+}
+
+// On Windows every signal is delivered as a hard kill (see killGroup below),
+// so the target never gets a chance to exit on its own and notify us via the
+// child's `close` event — which, for candidates launched through a chained
+// shebang wrapper (mktemp script -> snap/run -> exec node), has also been
+// observed to never fire even once the process tree is confirmed dead. Once
+// killGroup reports the kill itself succeeded, settle immediately with the
+// output captured so far rather than waiting on a notification that may
+// never arrive.
+function settleAsKilled(managed: ManagedProcess): void {
+  managed.settle({
+    stdout: managed.output.stdoutText(),
+    stderr: managed.output.stderrText(),
+    exitCode: null,
+    signal: "SIGKILL",
+  });
 }
 
 function launch(options: ProcessOptions): ManagedProcess {
@@ -143,7 +161,9 @@ function launch(options: ProcessOptions): ManagedProcess {
     stdio: ["pipe", "pipe", "pipe"],
   });
   const output = new OutputCollector(child);
+  let settle!: (result: ProcessResult) => void;
   const completion = new Promise<ProcessResult>((resolve, reject) => {
+    settle = resolve;
     child.once("error", reject);
     child.stdin!.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code !== "EPIPE") reject(error);
@@ -164,7 +184,7 @@ function launch(options: ProcessOptions): ManagedProcess {
   });
   completion.catch(() => killGroup(child, "SIGKILL"));
   child.stdin!.end(options.stdin);
-  return { child, completion, output };
+  return { child, completion, output, settle };
 }
 
 export class OutputCollector {
@@ -201,17 +221,23 @@ function decode(buffer: Buffer): string {
   return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
 }
 
-function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
-  if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return;
+// Returns true when the kill itself is confirmed to have succeeded on
+// Windows (see settleAsKilled above for why that matters); POSIX signal
+// delivery has no equivalent confirmation, so it always returns false there
+// and callers keep waiting on the real `close` event as before.
+function killGroup(child: ChildProcess, signal: NodeJS.Signals): boolean {
+  if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return false;
   if (process.platform === "win32") {
     try {
-      spawnSync("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" });
+      const result = spawnSync("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" });
+      return result.error === undefined && result.status === 0;
     } catch {
       try { child.kill(); } catch { /* exited */ }
+      return false;
     }
-    return;
   }
   try { process.kill(-child.pid, signal); } catch { try { child.kill(signal); } catch { /* exited */ } }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

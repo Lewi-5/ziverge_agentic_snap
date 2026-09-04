@@ -71,13 +71,32 @@ export async function runCase(test: TestCase, config: RunConfig): Promise<TestRe
     error = (cause as Error).message;
   } finally {
     for (const process of processes.values()) cleanupProcess(process);
-    await Promise.allSettled([...processes.values()].map((process) => process.completion));
+    // A killed process's `close` event is not always observed to fire (seen on
+    // Windows when the candidate is a chained shebang wrapper); cleanupProcess
+    // above has already force-killed everything, so bound this wait rather
+    // than hang the whole run on an event that may never arrive.
+    await Promise.race([
+      Promise.allSettled([...processes.values()].map((process) => process.completion)),
+      new Promise((resolve) => setTimeout(resolve, 5000)),
+    ]);
     await Promise.allSettled([...servers.values()].map(stopControlledServer));
   }
 
   const passed = error === undefined && steps.length === test.steps.length && steps.every((step) => step.passed);
   const preserve = !passed && config.keepFailed === true;
-  if (!preserve) rmSync(sandbox, { recursive: true, force: true });
+  if (!preserve) {
+    try {
+      // maxRetries/retryDelay absorb the brief EPERM/EBUSY window Windows
+      // leaves open after force-killing a process that still had files in
+      // the sandbox open. Sandbox cleanup is harness housekeeping, not part
+      // of the candidate's observed behavior, so a lock that outlives the
+      // retry budget is left for the OS's temp-directory GC rather than
+      // crashing the whole run.
+      rmSync(sandbox, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+    } catch {
+      /* leave the sandbox in place; not a test failure */
+    }
+  }
   return {
     source: test.source,
     name: test.name,

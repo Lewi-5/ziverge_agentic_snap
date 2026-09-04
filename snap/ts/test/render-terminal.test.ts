@@ -104,9 +104,10 @@ test("renders terminal diff records", () => {
         oldLabel: "a/file.txt",
         newLabel: "b/file.txt",
         oldTokenCount: 1,
-        newTokenCount: 1,
+        newTokenCount: 2,
         lines: [
           { kind: "delete", token: "old\n" as TextToken },
+          { kind: "context", token: "shared\n" as TextToken },
           { kind: "insert", token: "new" as TextToken }, // missing final newline
         ],
       },
@@ -119,13 +120,35 @@ test("renders terminal diff records", () => {
     ],
   });
 
-  assert.ok(result.includes(styleAnsi(ANSI_BOLD, "--- a/file.txt")));
-  assert.ok(result.includes(styleAnsi(ANSI_BOLD, "+++ b/file.txt")));
-  assert.ok(result.includes(styleAnsi(ANSI_CYAN, "@@ -1,1 +1,1 @@")));
-  assert.ok(result.includes(styleAnsi(ANSI_RED, "-old")));
-  assert.ok(result.includes(styleAnsi(ANSI_GREEN, "+new")));
-  assert.ok(result.includes(styleAnsi(ANSI_DIM, "\\ No newline at end of file")));
-  assert.ok(result.includes(styleAnsi(ANSI_YELLOW, "Binary files a/image.png and b/image.png differ")));
+  const expected =
+    `${styleAnsi(ANSI_BOLD, "--- a/file.txt")}\n` +
+    `${styleAnsi(ANSI_BOLD, "+++ b/file.txt")}\n` +
+    `${styleAnsi(ANSI_CYAN, "@@ -1,1 +1,2 @@")}\n` +
+    `${styleAnsi(ANSI_RED, "-old")}\n` +
+    " shared\n" +
+    `${styleAnsi(ANSI_GREEN, "+new")}\n` +
+    `${styleAnsi(ANSI_DIM, "\\ No newline at end of file")}\n` +
+    `${styleAnsi(ANSI_YELLOW, "Binary files a/image.png and b/image.png differ")}\n`;
+  assert.equal(result, expected);
+});
+
+test("terminal rendering preserves trailing path space and empty-result byte counts", () => {
+  const status = renderCommandResultTerminal({
+    kind: "status",
+    version: EMPTY_VERSION,
+    rows: [{ code: "A", path: "trailing " }],
+  });
+  assert.equal(
+    status,
+    `${styleAnsi(ANSI_BOLD, "Snap status")}  ${styleAnsi(ANSI_CYAN, "()")}\n\n` +
+      `  ${styleAnsi(ANSI_GREEN, "+")} trailing  ${styleAnsi(ANSI_DIM, "(added)")}\n`,
+  );
+
+  assert.equal(renderCommandResultTerminal({ kind: "silent" }), "");
+  assert.equal(renderCommandResultTerminal({ kind: "log", entries: [] }), "");
+  assert.equal(renderCommandResultTerminal({ kind: "diff", records: [] }), "");
+  assert.equal(renderCommandResultTerminal({ kind: "serve-startup", url: "http://127.0.0.1:8765/repository.json" }), "http://127.0.0.1:8765/repository.json\n");
+  assert.equal(renderCommandResultTerminal({ kind: "version-info", version: "1.0.0" }), `${styleAnsi(ANSI_BOLD, "snap 1.0.0")}\n`);
 });
 
 test("formats CLI error and warning lines in terminal mode", () => {

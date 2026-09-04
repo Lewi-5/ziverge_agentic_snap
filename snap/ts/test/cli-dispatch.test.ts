@@ -90,6 +90,44 @@ test("'--version' with extra arguments is a grammar error and touches no ports",
   assert.equal(outcome.stderr, GRAMMAR_ERROR_LINE);
 });
 
+test("invalid --serve port is rejected by the top-level parser without touching command ports", async () => {
+  const ports: CliPorts = {
+    fileSystem: throwingFileSystem(),
+    repositoryDiscovery: throwingDiscovery(),
+    environment: throwingEnvironment(),
+    workingTree: throwingWorkingTree(),
+  };
+  const outcome = await runCli({ argv: ["--serve", "65536"], cwd: CWD, ports });
+  assert.equal(outcome.exitCode, 1);
+  assert.equal(outcome.stdout, "");
+  assert.equal(outcome.stderr, "snap: invalid port: 65536\n");
+});
+
+test("release version is sourced from package.json", () => {
+  assert.equal(SNAP_VERSION, "1.0.0");
+});
+
+test("invalid SNAP_COLOR is a plain expected error before grammar or command execution", async () => {
+  const ports: CliPorts = {
+    fileSystem: throwingFileSystem(),
+    repositoryDiscovery: throwingDiscovery(),
+    environment: {
+      getEnv: (name: string) => name === "SNAP_COLOR" ? "sometimes" : undefined,
+    },
+    workingTree: throwingWorkingTree(),
+    terminal: {
+      isStdoutTty: () => true,
+      isStderrTty: () => true,
+    },
+  };
+  const outcome = await runCli({ argv: ["init", "repo"], cwd: CWD, ports });
+  assert.deepEqual(outcome, {
+    exitCode: 1,
+    stdout: "",
+    stderr: "snap: SNAP_COLOR must be auto, always, or never\n",
+  });
+});
+
 test("missing command", async () => {
   const ports: CliPorts = {
     fileSystem: throwingFileSystem(),

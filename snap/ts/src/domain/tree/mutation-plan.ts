@@ -1,4 +1,4 @@
-import { sortByUnsignedUtf8 } from "../unsigned-utf8.js";
+import { compareUnsignedUtf8, sortByUnsignedUtf8 } from "../unsigned-utf8.js";
 import { bytesEqual, type FileTree } from "./change.js";
 
 export interface TreeWrite {
@@ -14,8 +14,7 @@ export interface TreeMutationPlan {
 function deepestFirst(left: string, right: string): number {
   const depthDifference = right.split("/").length - left.split("/").length;
   if (depthDifference !== 0) return depthDifference;
-  const sorted = sortByUnsignedUtf8([left, right], (value) => value);
-  return sorted[0] === left ? -1 : 1;
+  return compareUnsignedUtf8(left, right);
 }
 
 /** Pure, deterministic plan from the known-clean current tree to a validated target tree. */

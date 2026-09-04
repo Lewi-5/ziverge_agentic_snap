@@ -54,7 +54,7 @@ export async function merge(cwd: string, repositoryOperand: string, ports: Merge
   const warnings = subtractWarningFacts(joinedState.value.warnings, localState.value.warnings);
   const historyUnchanged = local.value.repository.document.patches.length === joined.value.document.patches.length
     && compareCausal(local.value.repository.document.frontier, joined.value.document.frontier) === "equal";
-  if (historyUnchanged && isEmptyMutationPlan(plan)) return ok({ version: joined.value.document.frontier, warnings });
+  if (historyUnchanged && isEmptyMutationPlan(plan)) return ok({ version: joined.value.document.frontier, warnings: Object.freeze([]) });
 
   if (!isEmptyMutationPlan(plan)) await ports.treeMaterialization.apply(local.value.repoRoot, plan);
   await publishRepository(local.value.repoRoot, joined.value.document, ports);

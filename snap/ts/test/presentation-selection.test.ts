@@ -86,4 +86,12 @@ test("auto mode without NO_COLOR evaluates stdout and stderr TTY independently",
     assert.equal(res3.value.stdout, "terminal");
     assert.equal(res3.value.stderr, "terminal");
   }
+
+  const term4 = createNodeTerminalAdapter({ stdoutTty: false, stderrTty: false });
+  const res4 = resolvePresentation(env, term4);
+  assert.equal(res4.ok, true);
+  if (res4.ok) {
+    assert.equal(res4.value.stdout, "plain");
+    assert.equal(res4.value.stderr, "plain");
+  }
 });

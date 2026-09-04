@@ -2,9 +2,9 @@
 
 ## Status
 
-**Partially Implemented (Independent Primitives Complete)**
+**Complete**
 
-The independent CLI grammar and terminal presentation primitives for M7 were implemented ahead of M5/M6 in accordance with the architecture plan. All new components pass strict TypeScript type checks, zero-warning ESLint rules, and 23 dedicated unit tests.
+All CLI grammar parsing, top-level typed request dispatch, per-stream ANSI/plain presentation rendering, release versioning, and exit-code routing are implemented and pass strict checking. Public exit gates 14 (`14-cli-errors`) and 24 (`24-cli-grammar-matrix`) pass 100%. Scenario 28 is handed off to Module 8 as planned.
 
 ---
 
@@ -165,9 +165,33 @@ module's (correct, spec-aligned) behavior.
   (nested-JSON `}}` misparsed as a `{{...}}` interpolation token), unrelated
   to this session's changes.
 
-### Still remaining for M7 completion (all now blocked on M6, not before)
+---
 
-- Wire `merge`/`revert` into `dispatch.ts`'s `COMMANDS` map once M6 implements
-  them (grammar/`CommandRequest` support already exists).
-- Re-run scenario 14 end-to-end once `revert` exists.
-- Scenario 28 (`--serve` + terminal integration) remains M8 scope as planned.
+## 2026-09-04 final session: M7 completion on integrated M6 baseline
+
+Following M6's completion of `merge` and `revert`, this session resolved the remaining M7 requirements, completed the test matrix, and verified the public exit gates:
+
+### 1. Unified top-level grammar dispatch (`src/cli/dispatch.ts`)
+- Routed all CLI arguments through `parseCliArgs(context.argv)` before calling any handler.
+- Fixed scenario 14 step 3: `--serve 65536` now fails upfront with `snap: invalid port: 65536\n` before any command use cases or port listeners are initialized.
+- Mapped all commands (`init`, `config`, `status`, `log`, `commit`, `diff`, `merge`, `revert`, `version`, and `serve`) through typed `CommandRequest` instances.
+
+### 2. Sourced public release version 1.0.0 (`package.json`, `src/cli/version.ts`)
+- Bumped `package.json` version to `1.0.0` to meet SPEC §7.10 and public scenario 28 step 54 (`snap 1.0.0\n`).
+- Added regression test in `test/cli-dispatch.test.ts` asserting `SNAP_VERSION === "1.0.0"`.
+
+### 3. Tightened presentation & terminal rendering tests (`test/render-terminal.test.ts`, `test/presentation-selection.test.ts`)
+- Converted terminal diff output testing to byte-exact ANSI golden assertions covering all line styles (`---`, `+++`, `@@`, `-`, context line, `+`, `\ No newline at end of file`, binary differ notice).
+- Added tests asserting trailing whitespace in path names is preserved (`trailing  (added)`) without lossy normalization.
+- Verified empty command outputs stay 0 bytes (`silent`, empty `log`, empty `diff`).
+- Added test verifying non-TTY auto mode resolves to plain for both streams.
+
+### 4. Verification & exit gates
+- `npx tsc --noEmit -p tsconfig.test.json`: clean (0 errors).
+- `npx eslint "src/**/*.ts" --max-warnings 0`: clean (0 warnings).
+- Unit test suite via emitted JS: **364 passed, 0 failed, 4 skipped** (Windows symlink privilege skips).
+- Public acceptance scenario 14 (`14-cli-errors`): **PASSED** in full.
+- Public acceptance scenario 24 (`24-cli-grammar-matrix`): **PASSED** in full.
+- Regression suite: scenarios 04, 07, 09, 10, 11, 21 all pass.
+- Public scenario 28 (`28-terminal-presentation`): handed off to Module 8 as planned (requires `--serve` server lifecycle).
+

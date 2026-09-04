@@ -8,9 +8,10 @@ import { mergeCommand } from "./commands/merge.js";
 import { revertCommand } from "./commands/revert.js";
 import { versionCommand } from "./commands/version.js";
 import type { Command } from "./commands/command.js";
+import type { CommandRequest } from "./command-request.js";
 import { formatCliErrorLine, unexpectedErrorDetail } from "./errors.js";
 import { EXIT_EXPECTED_ERROR, EXIT_SUCCESS, EXIT_UNEXPECTED_ERROR } from "./exit-codes.js";
-import { GRAMMAR_ERROR } from "./grammar.js";
+import { GRAMMAR_ERROR, parseCliArgs } from "./grammar.js";
 import { type ResolvedPresentation, resolvePresentation } from "./presentation.js";
 import { renderCommandResult, renderWarningFactsPlain } from "./render.js";
 import { formatCliErrorLineTerminal, formatCliWarningLineTerminal, renderCommandResultTerminal } from "./render-terminal.js";
@@ -33,6 +34,24 @@ const NON_TTY_TERMINAL: TerminalPort = {
   isStdoutTty: (): boolean => false,
   isStderrTty: (): boolean => false,
 };
+
+function commandName(request: CommandRequest): string | undefined {
+  switch (request.kind) {
+    case "version":
+      return "--version";
+    case "serve":
+      return undefined;
+    case "init":
+    case "config":
+    case "status":
+    case "log":
+    case "commit":
+    case "diff":
+    case "revert":
+    case "merge":
+      return request.kind;
+  }
+}
 
 /**
  * Renders a successful CommandResult per the resolved presentation (SPEC
@@ -66,24 +85,24 @@ export async function runCli(context: CliContext): Promise<CliOutcome> {
   }
   const presentation = presentationResult.value;
 
-  if (context.argv[0] === "--version") {
-    if (context.argv.length !== 1) {
-      return { exitCode: EXIT_EXPECTED_ERROR, stdout: "", stderr: renderError(GRAMMAR_ERROR.detail, presentation) };
-    }
-    const result = await versionCommand([], context);
-    return result.ok
-      ? { exitCode: EXIT_SUCCESS, stdout: renderSuccess(result.value, presentation), stderr: renderWarnings(result.value, presentation) }
-      : { exitCode: EXIT_EXPECTED_ERROR, stdout: "", stderr: renderError(result.error.detail, presentation) };
+  const parsed = parseCliArgs(context.argv);
+  if (!parsed.ok) {
+    return { exitCode: EXIT_EXPECTED_ERROR, stdout: "", stderr: renderError(parsed.error.detail, presentation) };
   }
 
   try {
-    if (context.argv.length === 0) {
-      return { exitCode: EXIT_EXPECTED_ERROR, stdout: "", stderr: renderError(GRAMMAR_ERROR.detail, presentation) };
+    if (parsed.value.kind === "version") {
+      const result = await versionCommand([], context);
+      return result.ok
+        ? { exitCode: EXIT_SUCCESS, stdout: renderSuccess(result.value, presentation), stderr: renderWarnings(result.value, presentation) }
+        : { exitCode: EXIT_EXPECTED_ERROR, stdout: "", stderr: renderError(result.error.detail, presentation) };
     }
 
-    const commandName = context.argv[0];
-    const handler = commandName === undefined ? undefined : COMMANDS.get(commandName);
+    const name = commandName(parsed.value);
+    const handler = name === undefined ? undefined : COMMANDS.get(name);
     if (handler === undefined) {
+      // The serve request is parsed in M7 so its grammar and port diagnostics
+      // are authoritative here. M8 supplies the long-running server handler.
       return { exitCode: EXIT_EXPECTED_ERROR, stdout: "", stderr: renderError(GRAMMAR_ERROR.detail, presentation) };
     }
 

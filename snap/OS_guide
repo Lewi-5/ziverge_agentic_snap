@@ -239,8 +239,8 @@ The interpolation engine treats `}}` as literal characters outside of an interpo
 | `09-merge-clean` | Clean local merge & idempotence | PASS | PASS | PASS | M6 scope |
 | `10-merge-conflicts` | Whole-file conflict rules & warnings | PASS | PASS | PASS | M6 scope |
 | `11-namespace-conflicts` | Namespace file/dir collision resolution | PASS | PASS | PASS | M6 scope |
-| `12-http-server` | HTTP server `--serve` snapshot & exit | Pending M8 | Pending M8 | Pending M8 | Module 8 scope |
-| `13-http-client` | HTTP merge & diff GET requests | Pending M8 | Pending M8 | Pending M8 | Module 8 scope |
+| `12-http-server` | HTTP server `--serve` snapshot & exit | PASS | Signal Hang | PASS | Requires POSIX signal delivery (SIGTERM/SIGINT) |
+| `13-http-client` | HTTP merge & diff GET requests | PASS | Signal Hang | PASS | Requires POSIX signal delivery (SIGTERM/SIGINT) |
 | `14-exit-channels` | Stable exit codes & stderr formatting | PASS | PASS | PASS | M7 scope |
 | `15-repository-schema` | Strict schema validation boundary | PASS | PASS | PASS | M5 scope |
 | `16-cross-repository-dot-collision` | Cross-repo collision failure safety | PASS | PASS | PASS | M5 scope |
@@ -253,9 +253,9 @@ The interpolation engine treats `}}` as literal characters outside of an interpo
 | `23-repository-validation` | Deep malformed repository rejection | PASS | PASS | PASS | M5 scope |
 | `24-cli-grammar` | Command grammar & argument validation | PASS | PASS | PASS | M7 scope |
 | `25-configuration-boundaries` | Identity validation boundaries | PASS | PASS | PASS | M2/M7 scope |
-| `26-portability-and-failure-safety` | Local file exchange & atomic updates | Partial | Partial | Partial | Steps 1-17 pass; Step 18 is M8 HTTP remote |
+| `26-portability-and-failure-safety` | Local file exchange & atomic updates | PASS | PASS | PASS | M8/M9 scope |
 | `27-patch-histories` | Base transitions & schema checks | PASS | PASS | PASS | M5 scope |
-| `28-terminal-presentation` | ANSI terminal styling & NO_COLOR | Partial | Partial | Partial | Steps 1-35 pass; Step 36 is M8 `--serve 0` |
+| `28-terminal-presentation` | ANSI terminal styling & NO_COLOR | PASS | Signal Hang | PASS | Requires POSIX signal delivery (SIGTERM/SIGINT) |
 
 ---
 

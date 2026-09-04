@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import * as fs from "node:fs/promises";
+import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
 import { createNodeFileSystemAdapter } from "../src/adapters/node-filesystem-adapter.js";
@@ -183,3 +185,82 @@ test("mock filesystem: sorts directory entries deterministically so the first un
     assert.equal(result.error.detail, "unsupported working tree entry: a_symlink");
   }
 });
+
+test("real filesystem: rejects a POSIX FIFO (named pipe) without opening or blocking on it", async (context) => {
+  if (process.platform === "win32") {
+    context.skip("FIFOs are not supported on Windows");
+    return;
+  }
+  const root = await withTempRepo(async (dir) => {
+    await fs.mkdir(path.join(dir, ".snap"), { recursive: true });
+  });
+  try {
+    const fifoPath = path.join(root, "pipe");
+    const res = spawnSync("mkfifo", [fifoPath]);
+    if (res.status !== 0) {
+      context.skip("mkfifo is not available in this environment");
+      return;
+    }
+    const scanner = createNodeWorkingTreeAdapter(createNodeFileSystemAdapter());
+    const result = await scanner.scan(root);
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.error.detail, "unsupported working tree entry: pipe");
+    }
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("real filesystem: rejects a POSIX Unix domain socket without connecting to it", async (context) => {
+  if (process.platform === "win32") {
+    context.skip("Unix domain sockets are not supported on Windows");
+    return;
+  }
+  const root = await withTempRepo(async (dir) => {
+    await fs.mkdir(path.join(dir, ".snap"), { recursive: true });
+  });
+  try {
+    const socketPath = path.join(root, "app.sock");
+    const server = net.createServer();
+    await new Promise<void>((resolve, reject) => {
+      server.listen(socketPath, () => resolve());
+      server.on("error", reject);
+    });
+    try {
+      const scanner = createNodeWorkingTreeAdapter(createNodeFileSystemAdapter());
+      const result = await scanner.scan(root);
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.equal(result.error.detail, "unsupported working tree entry: app.sock");
+      }
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("real filesystem: rejects a symlink cycle without infinite recursion", async (context) => {
+  const root = await withTempRepo(async (dir) => {
+    await fs.mkdir(path.join(dir, ".snap"), { recursive: true });
+  });
+  try {
+    try {
+      await fs.symlink(root, path.join(root, "cycle"));
+    } catch {
+      context.skip("symlink creation is restricted in this environment");
+      return;
+    }
+    const scanner = createNodeWorkingTreeAdapter(createNodeFileSystemAdapter());
+    const result = await scanner.scan(root);
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.error.detail, "unsupported working tree entry: cycle");
+    }
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+

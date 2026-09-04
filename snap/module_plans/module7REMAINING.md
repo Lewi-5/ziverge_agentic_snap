@@ -14,13 +14,13 @@ Both public exit gate scenarios (`14-cli-errors` and `24-cli-grammar-matrix`) pa
 
 | File | Changes Made | Validation Status |
 | :--- | :--- | :--- |
-| [snap/ts/package.json](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/package.json)<br>[snap/ts/package-lock.json](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/package-lock.json) | Bumped package version from `0.1.0` to `1.0.0`. Sourced directly by [src/cli/version.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/cli/version.ts). | **Satisfied**: Aligns `--version` output with SPEC §7.10 and scenario 28 (`snap 1.0.0\n`). |
-| [snap/ts/src/cli/dispatch.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/cli/dispatch.ts) | 1. Routed all `context.argv` through the shared typed AST parser `parseCliArgs` before dispatching to any handler.<br>2. Fixed scenario 14 step 3 bug where `--serve 65536` failed with generic grammar error instead of `snap: invalid port: 65536\n`.<br>3. Cleanly mapped `CommandRequest` variants (`version`, `serve`, and standard commands). | **Satisfied**: Unblocks scenario 14 and scenario 24 end-to-end. |
-| [snap/ts/test/cli-dispatch.test.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/test/cli-dispatch.test.ts) | 1. Added test for invalid `--serve 65536` rejection without touching ports.<br>2. Added test asserting `SNAP_VERSION === "1.0.0"`.<br>3. Added test verifying invalid `SNAP_COLOR` is a plain expected error before grammar or command execution. | **Satisfied**: All pass. |
-| [snap/ts/test/presentation-selection.test.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/test/presentation-selection.test.ts) | Added the all-non-TTY case in `auto` mode (asserting both stdout and stderr resolve to "plain" when neither stream is a TTY). | **Satisfied**: Closes the TTY truth-table matrix. |
-| [snap/ts/test/render-terminal.test.ts](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/test/render-terminal.test.ts) | 1. Converted terminal diff output testing to byte-exact assertions (checking ANSI codes for headers, hunks, context lines, insertions, deletions, `\ No newline at end of file`, and binary diffs).<br>2. Added assertions verifying trailing spaces in path names are preserved (`trailing  (added)`).<br>3. Added tests verifying empty result types produce 0 bytes (`silent`, empty `log`, empty `diff`). | **Satisfied**: Validates every terminal layout specified in SPEC §7.11 and scenario 28. |
-| [snap/modules.md](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/modules.md) | Updated row `M7` to `Complete` with full verification details and scenario 28 handoff. | **Satisfied**: Marked `Complete` in tracker. |
-| [snap/ts/.m7-test-build/candidate](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/.m7-test-build/candidate) | Created Node candidate executable script used by the public test harness on Windows. | **Satisfied**: Functional for testing. |
+| [`snap/ts/package.json`](../ts/package.json)<br>[`snap/ts/package-lock.json`](../ts/package-lock.json) | Bumped package version from `0.1.0` to `1.0.0`. Sourced directly by [`src/cli/version.ts`](../ts/src/cli/version.ts). | **Satisfied**: Aligns `--version` output with SPEC §7.10 and scenario 28 (`snap 1.0.0\n`). |
+| [`snap/ts/src/cli/dispatch.ts`](../ts/src/cli/dispatch.ts) | 1. Routed all `context.argv` through the shared typed AST parser `parseCliArgs` before dispatching to any handler.<br>2. Fixed scenario 14 step 3 bug where `--serve 65536` failed with generic grammar error instead of `snap: invalid port: 65536\n`.<br>3. Cleanly mapped `CommandRequest` variants (`version`, `serve`, and standard commands). | **Satisfied**: Unblocks scenario 14 and scenario 24 end-to-end. |
+| [`snap/ts/test/cli-dispatch.test.ts`](../ts/test/cli-dispatch.test.ts) | 1. Added test for invalid `--serve 65536` rejection without touching ports.<br>2. Added test asserting `SNAP_VERSION === "1.0.0"`.<br>3. Added test verifying invalid `SNAP_COLOR` is a plain expected error before grammar or command execution. | **Satisfied**: All pass. |
+| [`snap/ts/test/presentation-selection.test.ts`](../ts/test/presentation-selection.test.ts) | Added the all-non-TTY case in `auto` mode (asserting both stdout and stderr resolve to "plain" when neither stream is a TTY). | **Satisfied**: Closes the TTY truth-table matrix. |
+| [`snap/ts/test/render-terminal.test.ts`](../ts/test/render-terminal.test.ts) | 1. Converted terminal diff output testing to byte-exact assertions (checking ANSI codes for headers, hunks, context lines, insertions, deletions, `\ No newline at end of file`, and binary diffs).<br>2. Added assertions verifying trailing spaces in path names are preserved (`trailing  (added)`).<br>3. Added tests verifying empty result types produce 0 bytes (`silent`, empty `log`, empty `diff`). | **Satisfied**: Validates every terminal layout specified in SPEC §7.11 and scenario 28. |
+| [`snap/modules.md`](../modules.md) | Updated row `M7` to `Complete` with full verification details and scenario 28 handoff. | **Satisfied**: Marked `Complete` in tracker. |
+| [`snap/ts/.m7-test-build/candidate`](../ts/.m7-test-build/candidate) | Created Node candidate executable script used by the public test harness on Windows. | **Satisfied**: Functional for testing. |
 
 ---
 
@@ -63,7 +63,7 @@ Both public exit gate scenarios (`14-cli-errors` and `24-cli-grammar-matrix`) pa
 All previously pending tasks have been executed and committed:
 
 ### 1. Updated `snap/modules.md` Tracker Table [DONE]
-In [snap/modules.md](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/modules.md), updated row `M7` from `In Progress` to `Complete`:
+In [`snap/modules.md`](../modules.md), updated row `M7` from `In Progress` to `Complete`:
 - **Status**: `Complete`
 - **Last verified**:
   ```text
@@ -75,7 +75,7 @@ In [snap/modules.md](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Githu
   ```
 
 ### 2. Updated `snap/module_plans/module7PROGRESS.md` [DONE]
-Updated [snap/module_plans/module7PROGRESS.md](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/module_plans/module7PROGRESS.md):
+Updated [`snap/module_plans/module7PROGRESS.md`](module7PROGRESS.md):
 - Changed header status to `Complete`.
 - Recorded the latest implementation details (package version 1.0.0, top-level `parseCliArgs` in `dispatch.ts`, invalid port handling, exact terminal golden tests).
 - Recorded passing public exit gates (scenarios 14 and 24).

@@ -203,7 +203,7 @@ In `.gitattributes`:
 On Linux (ext4), `fs.readdir` returns entries in arbitrary hash-table order. On Windows (NTFS), entries are often alphabetized, but not strictly by unsigned UTF-8 byte order (e.g. Unicode casing rules). When a working tree contains multiple unsupported entries (such as symlinks or sockets), iterating in raw OS order would report different errors on different operating systems.
 
 #### The Snap Solution
-Snap's [`node-working-tree-adapter.ts`](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/ts/src/adapters/node-working-tree-adapter.ts) explicitly sorts all directory entries via `sortByUnsignedUtf8(names, (n) => n)` before walking. This guarantees 100% deterministic traversal and error reporting on both Windows and Linux.
+Snap's [`node-working-tree-adapter.ts`](ts/src/adapters/node-working-tree-adapter.ts) explicitly sorts all directory entries via `sortByUnsignedUtf8(names, (n) => n)` before walking. This guarantees 100% deterministic traversal and error reporting on both Windows and Linux.
 
 ### 4.4 Missing `/bin/sh` on Windows
 
@@ -217,7 +217,7 @@ The acceptance test runner (`snap/test-harness/src/process.ts`) expects a POSIX 
 ### 4.5 Acceptance Harness Delimiter Escaping
 
 #### The Issue
-YAML acceptance tests frequently contain JSON strings with closing braces, such as `{"contributor":{"id":"global@example.com"}}`. Previously, the harness's [`interpolate.ts`](file:///c:/Users/Lewis/OneDrive%20-%20LATYS/Documents/Github/ziverge_agentic_snap/snap/test-harness/src/interpolate.ts) crashed with `invalid variable expression` whenever encountering literal `}}`.
+YAML acceptance tests frequently contain JSON strings with closing braces, such as `{"contributor":{"id":"global@example.com"}}`. Previously, the harness's [`interpolate.ts`](test-harness/src/interpolate.ts) crashed with `invalid variable expression` whenever encountering literal `}}`.
 
 #### The Snap Solution
 The interpolation engine treats `}}` as literal characters outside of an interpolation block while preserving variable substitution (`{{name}}`) and escape delimiters (`{{{{` and `}}}}`).

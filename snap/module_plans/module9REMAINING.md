@@ -271,9 +271,7 @@ result before declaring the project complete.
 
 Also re-run from two portability angles `module9PLAN.md` explicitly calls
 for and this session did not attempt:
-- a repository root path containing spaces (this repo's own path already has
-  one — `.../OneDrive - LATYS/...` — so this may already be implicitly
-  covered; confirm deliberately rather than assuming), and
+- a repository root path containing spaces (confirm deliberately rather than assuming), and
 - a nested repository `cwd` (covered incidentally by Work Package 2 item 2
   above; no separate action needed once that lands).
 

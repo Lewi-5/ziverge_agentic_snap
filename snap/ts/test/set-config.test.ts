@@ -21,6 +21,13 @@ function recordingFileSystem(): FileSystemPort & { readonly writes: Map<string, 
       return Promise.resolve();
     },
     readFileIfExists: () => Promise.resolve(null),
+    writeFileDurable: (targetPath, contents) => {
+      writes.set(targetPath, contents);
+      return Promise.resolve();
+    },
+    renameFile: () => Promise.resolve(),
+    removeFileIfExists: () => Promise.resolve(),
+    listDirectory: () => Promise.resolve([]),
   };
 }
 

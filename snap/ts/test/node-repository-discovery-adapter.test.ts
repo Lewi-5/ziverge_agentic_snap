@@ -32,6 +32,10 @@ function fakeFileSystem(options: {
     mkdirRecursive: () => Promise.reject(new Error("not used in this test")),
     writeFile: () => Promise.reject(new Error("not used in this test")),
     readFileIfExists: () => Promise.reject(new Error("not used in this test")),
+    writeFileDurable: () => Promise.reject(new Error("not used in this test")),
+    renameFile: () => Promise.reject(new Error("not used in this test")),
+    removeFileIfExists: () => Promise.reject(new Error("not used in this test")),
+    listDirectory: () => Promise.reject(new Error("not used in this test")),
   };
 }
 

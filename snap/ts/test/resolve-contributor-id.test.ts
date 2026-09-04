@@ -22,6 +22,10 @@ function fileSystemWith(files: Readonly<Record<string, string>>): FileSystemPort
     isDirectory: fail,
     mkdirRecursive: fail,
     writeFile: fail,
+    writeFileDurable: fail,
+    renameFile: fail,
+    removeFileIfExists: fail,
+    listDirectory: fail,
     readFileIfExists: (candidate) => {
       const contents = files[candidate];
       return Promise.resolve(contents === undefined ? null : bytesOf(contents));
@@ -122,6 +126,10 @@ test("invalid UTF-8 bytes in local config fail without reading global", async ()
     isDirectory: fail,
     mkdirRecursive: fail,
     writeFile: fail,
+    writeFileDurable: fail,
+    renameFile: fail,
+    removeFileIfExists: fail,
+    listDirectory: fail,
     readFileIfExists: (candidate) => Promise.resolve(candidate === LOCAL_PATH ? new Uint8Array([0xff]) : fail()),
   };
   const result = await resolveContributorId(REPO_ROOT, { fileSystem, environment: environmentWith(home) });
@@ -141,6 +149,10 @@ test("a permission-style read failure propagates as an unexpected error, not a f
     isDirectory: fail,
     mkdirRecursive: fail,
     writeFile: fail,
+    writeFileDurable: fail,
+    renameFile: fail,
+    removeFileIfExists: fail,
+    listDirectory: fail,
     readFileIfExists: fail,
   };
   await assert.rejects(

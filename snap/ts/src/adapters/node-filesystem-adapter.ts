@@ -71,5 +71,34 @@ export function createNodeFileSystemAdapter(): FileSystemPort {
         throw error;
       }
     },
+
+    async writeFileDurable(path: string, contents: string): Promise<void> {
+      const handle = await fs.open(path, "w");
+      try {
+        await handle.writeFile(contents, "utf8");
+        await handle.sync();
+      } finally {
+        await handle.close();
+      }
+    },
+
+    async renameFile(oldPath: string, newPath: string): Promise<void> {
+      await fs.rename(oldPath, newPath);
+    },
+
+    async removeFileIfExists(path: string): Promise<void> {
+      try {
+        await fs.unlink(path);
+      } catch (error) {
+        if (isNodeErrnoException(error) && (error.code === "ENOENT" || error.code === "ENOTDIR")) {
+          return;
+        }
+        throw error;
+      }
+    },
+
+    async listDirectory(path: string): Promise<readonly string[]> {
+      return fs.readdir(path);
+    },
   };
 }

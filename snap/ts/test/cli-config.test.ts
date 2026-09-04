@@ -20,7 +20,18 @@ function throwingPorts(): CliPorts {
     throw new Error("ports must not be touched for a rejected grammar shape");
   };
   return {
-    fileSystem: { entryKind: fail, pathExists: fail, isDirectory: fail, mkdirRecursive: fail, writeFile: fail, readFileIfExists: fail },
+    fileSystem: {
+      entryKind: fail,
+      pathExists: fail,
+      isDirectory: fail,
+      mkdirRecursive: fail,
+      writeFile: fail,
+      readFileIfExists: fail,
+      writeFileDurable: fail,
+      renameFile: fail,
+      removeFileIfExists: fail,
+      listDirectory: fail,
+    },
     repositoryDiscovery: { findRepositoryRoot: fail },
     environment: { getEnv: fail },
   };
@@ -77,6 +88,10 @@ test("grammar: an invalid contributor id reaches setConfig and fails with the ex
     mkdirRecursive: () => Promise.resolve(),
     writeFile: () => Promise.resolve(),
     readFileIfExists: () => Promise.resolve(null),
+    writeFileDurable: () => Promise.resolve(),
+    renameFile: () => Promise.resolve(),
+    removeFileIfExists: () => Promise.resolve(),
+    listDirectory: () => Promise.resolve([]),
   };
   const repositoryDiscovery: RepositoryDiscoveryPort = { findRepositoryRoot: () => Promise.resolve(null) };
   const environment: EnvironmentPort = { getEnv: () => undefined };

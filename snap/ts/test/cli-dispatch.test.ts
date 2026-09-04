@@ -14,7 +14,18 @@ function throwingFileSystem(): FileSystemPort {
   const fail = (): never => {
     throw new Error("filesystem must not be touched");
   };
-  return { entryKind: fail, pathExists: fail, isDirectory: fail, mkdirRecursive: fail, writeFile: fail, readFileIfExists: fail };
+  return {
+    entryKind: fail,
+    pathExists: fail,
+    isDirectory: fail,
+    mkdirRecursive: fail,
+    writeFile: fail,
+    readFileIfExists: fail,
+    writeFileDurable: fail,
+    renameFile: fail,
+    removeFileIfExists: fail,
+    listDirectory: fail,
+  };
 }
 
 function throwingDiscovery(): RepositoryDiscoveryPort {
@@ -119,6 +130,13 @@ test("init success through runCli", async () => {
       return Promise.resolve();
     },
     readFileIfExists: () => Promise.resolve(null),
+    writeFileDurable: (targetPath, contents) => {
+      writes.set(targetPath, contents);
+      return Promise.resolve();
+    },
+    renameFile: () => Promise.resolve(),
+    removeFileIfExists: () => Promise.resolve(),
+    listDirectory: () => Promise.resolve([]),
   };
   const repositoryDiscovery: RepositoryDiscoveryPort = { findRepositoryRoot: () => Promise.resolve(null) };
   const environment = throwingEnvironment();
